@@ -1,10 +1,19 @@
 ﻿open System
+open FSharp.NativeInterop
+open System.Numerics
 open System.Drawing
 open System.IO
 open Silk.NET.OpenGL
 open Silk.NET.Input
 open Silk.NET.Windowing
 open StbImageSharp
+
+let setUniformM4 (gl:GL) transform value = 
+      let mutable auxVal = value
+      let valPtr = NativePtr.toNativeInt<Matrix4x4> &&auxVal
+      let ptr = NativePtr.ofNativeInt<float32> valPtr 
+      gl.UniformMatrix4 (transform,  1u, false, ptr)
+
 let private LoadTexture (gl:GL) =
     let inputbytes= File.ReadAllBytes "silk.png"
     printf "length: %i\n" inputbytes.Length
@@ -12,37 +21,12 @@ let private LoadTexture (gl:GL) =
     let handle = gl.GenTexture()
     gl.BindTexture (TextureTarget.Texture2D, handle)
     gl.TexImage2D (TextureTarget.Texture2D, 0, InternalFormat.Rgba, uint result.Width, uint result.Height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, ReadOnlySpan result.Data)
-    // Set the texture wrap mode to repeat.
-    // The texture wrap mode defines what should happen when the texture coordinates go outside of the 0-1 range.
-    // In this case, we set it to repeat. The texture will just repeatedly tile over and over again.
-    // You'll notice we're using S and T wrapping here. This is OpenGL's version of the standard UV mapping you
-    // may be more used to, where S is on the X-axis, and T is on the Y-axis.
     gl.TextureParameter(handle, TextureParameterName.TextureWrapS, int TextureWrapMode.Repeat)
     gl.TextureParameter(handle, TextureParameterName.TextureWrapT, int TextureWrapMode.Repeat)
-
-    // The min and mag filters define how the texture should be sampled as it resized.
-    // The min, or minification filter, is used when the texture is reduced in size.
-    // The mag, or magnification filter, is used when the texture is increased in size.
-    // We're using bilinear filtering here, as it produces a generally nice result.
-    // You can also use nearest (point) filtering, or anisotropic filtering, which is only available on the min
-    // filter.
-    // You may notice that the min filter defines a "mipmap" filter as well. We'll go over mipmaps below.
     gl.TextureParameter(handle, TextureParameterName.TextureMinFilter, int TextureMinFilter.NearestMipmapNearest)
     gl.TextureParameter(handle, TextureParameterName.TextureMagFilter, int TextureMagFilter.Nearest)
 
-    // Generate mipmaps for this texture.
-    // Note: We MUST do this or the texture will appear as black (this is an option you can change but this is
-    // out of scope for this tutorial).
-    // What is a mipmap?
-    // A mipmap is essentially a smaller version of the existing texture. When generating mipmaps, the texture
-    // size is continuously halved, generally stopping once it reaches a size of 1x1 pixels. (Note: there are
-    // exceptions to this, for example if the GPU reaches its maximum level of mipmaps, which is both a hardware
-    // limitation, and a user defined value. You don't need to worry about this for now, so just assume that
-    // the mips will be generated all the way down to 1x1 pixels).
-    // Mipmaps are used when the texture is reduced in size, to produce a much nicer result, and to reduce moire
-    // effect patterns.
     gl.GenerateMipmap TextureTarget.Texture2D
-    // Unbind the texture as we no longer need to update it any further.
     gl.BindTexture(TextureTarget.Texture2D, 0u)
 
     handle
@@ -139,8 +123,15 @@ let main args =
       gl.UseProgram shaderHandle
       gl.BindVertexArray vao
       gl.BindTexture (TextureTarget.Texture2D, texture)
+      let transform = gl.GetUniformLocation (shaderHandle, "uTransform" )
+      let t1 = Matrix4x4.Identity * Matrix4x4.CreateTranslation(Vector3(0.5f, 0.5f, 0f))
+      setUniformM4 gl transform t1
     //   gl.PolygonMode(GLEnum.FrontAndBack, PolygonMode.Line)
       gl.DrawElements(PrimitiveType.Triangles, uint indices.Length, DrawElementsType.UnsignedInt, 0n.ToPointer() )
+      let t2 = Matrix4x4.Identity * Matrix4x4.CreateTranslation(Vector3(-0.5f, -0.5f, 0f))
+      setUniformM4 gl transform t2
+      gl.DrawElements(PrimitiveType.Triangles, uint indices.Length, DrawElementsType.UnsignedInt, 0n.ToPointer() )
+
     )
 
     window.add_Resize(fun size ->
