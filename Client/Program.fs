@@ -1,5 +1,4 @@
 ﻿open System
-open FSharp.NativeInterop
 open System.Numerics
 open System.Drawing
 open System.IO
@@ -7,12 +6,18 @@ open Silk.NET.OpenGL
 open Silk.NET.Input
 open Silk.NET.Windowing
 open StbImageSharp
+open System.Runtime.InteropServices
 
-let setUniformM4 (gl:GL) transform value = 
-      let mutable auxVal = value
-      let valPtr = NativePtr.toNativeInt<Matrix4x4> &&auxVal
-      let ptr = NativePtr.ofNativeInt<float32> valPtr 
-      gl.UniformMatrix4 (transform,  1u, false, ptr)
+let ortho = Matrix4x4.CreateOrthographic (800f, 600f, 0.1f, 100f)
+let proj = Matrix4x4.CreatePerspectiveFieldOfView (Single.DegreesToRadians 45f, 800f/600f, 0.1f, 100f)
+let model = Matrix4x4.CreateRotationX (Single.DegreesToRadians -55f) * Matrix4x4.CreateRotationY(Single.DegreesToRadians -24f) * Matrix4x4.CreateRotationZ(Single.DegreesToRadians 25f)
+let view = Matrix4x4.CreateTranslation (Vector3 (0f, 0f, -3f))
+
+let setUniformM4 (gl:GL) transform value =
+    let mutable auxVal = value    
+    let s = ReadOnlySpan &auxVal
+    let span = MemoryMarshal.Cast<Matrix4x4, float32> s
+    gl.UniformMatrix4 (transform, false, span)
 
 let private LoadTexture (gl:GL) =
     let inputbytes= File.ReadAllBytes "silk.png"
@@ -37,7 +42,10 @@ let compileShader path (kind:ShaderType) (gl: GL) =
   gl.ShaderSource (shader, source)
   gl.CompileShader shader
   let code = gl.GetShader(shader, GLEnum.CompileStatus)
-  if code <> int GLEnum.True then failwith (sprintf "Error compiling shader %d" shader)
+  if code <> int GLEnum.True then 
+    let msg = gl.GetShaderInfoLog shader
+
+    failwith (sprintf "Error compiling shader %d:\n%s\n" shader msg)
   shader
 
 let createShader vertPath fragPath (gl: GL) =
@@ -72,20 +80,48 @@ type Vertex =
 let main args =
   let vertices = 
     [|
-        { x=  0.5f; y=  0.5f; z= 0.0f; s= 1.0f; t= 1.0f;};
-        { x=  0.5f; y= -0.5f; z= 0.0f; s= 1.0f; t= 0.0f;};
-        { x= -0.5f; y= -0.5f; z= 0.0f; s= 0.0f; t= 0.0f;};
-        { x= -0.5f; y=  0.5f; z= 0.0f; s= 0.0f; t= 1.0f;};  
-    |]
-  let indices = [|
-    0u; 1u; 3u; 1u; 2u; 3u;
-  |]
+      {x= -0.5f; y= -0.5f; z= -0.5f; s=0.0f; t= 0.0f}
+      {x=  0.5f; y= -0.5f; z= -0.5f; s=1.0f; t=0.0f}
+      {x=  0.5f; y=  0.5f; z= -0.5f; s=1.0f; t=1.0f}
+      {x=  0.5f; y=  0.5f; z= -0.5f; s=1.0f; t=1.0f}
+      {x= -0.5f; y=  0.5f; z= -0.5f; s=0.0f; t= 1.0f}
+      {x= -0.5f; y= -0.5f; z= -0.5f; s=0.0f; t= 0.0f}
+      {x= -0.5f; y= -0.5f; z=  0.5f; s=0.0f; t= 0.0f}
+      {x=  0.5f; y= -0.5f; z= 0.5f;  s=1.0f; t=0.0f}
+      {x=  0.5f; y=  0.5f; z= 0.5f;  s=1.0f; t=1.0f}
+      {x=  0.5f; y=  0.5f; z= 0.5f;  s=1.0f; t=1.0f}
+      {x= -0.5f; y=  0.5f; z=  0.5f; s=0.0f; t= 1.0f}
+      {x= -0.5f; y= -0.5f; z=  0.5f; s=0.0f; t= 0.0f}
+      {x= -0.5f; y=  0.5f; z=  0.5f; s=1.0f; t= 0.0f}
+      {x= -0.5f; y=  0.5f; z= -0.5f; s=1.0f; t= 1.0f}
+      {x= -0.5f; y= -0.5f; z= -0.5f; s=0.0f; t= 1.0f}
+      {x= -0.5f; y= -0.5f; z= -0.5f; s=0.0f; t= 1.0f}
+      {x= -0.5f; y= -0.5f; z=  0.5f; s=0.0f; t= 0.0f}
+      {x= -0.5f; y=  0.5f; z=  0.5f; s=1.0f; t= 0.0f}
+      {x=  0.5f; y=  0.5f; z= 0.5f;  s=1.0f; t=0.0f}
+      {x=  0.5f; y=  0.5f; z= -0.5f; s=1.0f; t=1.0f}
+      {x=  0.5f; y= -0.5f; z= -0.5f; s=0.0f; t=1.0f}
+      {x=  0.5f; y= -0.5f; z= -0.5f; s=0.0f; t=1.0f}
+      {x=  0.5f; y= -0.5f; z= 0.5f;  s=0.0f; t=0.0f}
+      {x=  0.5f; y=  0.5f; z= 0.5f;  s=1.0f; t=0.0f}
+      {x= -0.5f; y= -0.5f; z= -0.5f; s=0.0f; t= 1.0f}
+      {x=  0.5f; y= -0.5f; z= -0.5f; s=1.0f; t=1.0f}
+      {x=  0.5f; y= -0.5f; z= 0.5f;  s=1.0f; t=0.0f}
+      {x=  0.5f; y= -0.5f; z= 0.5f;  s=1.0f; t=0.0f}
+      {x= -0.5f; y= -0.5f; z=  0.5f; s=0.0f; t= 0.0f}
+      {x= -0.5f; y= -0.5f; z= -0.5f; s=0.0f; t= 1.0f}
+      {x= -0.5f; y=  0.5f; z= -0.5f; s=0.0f; t= 1.0f}
+      {x=  0.5f; y=  0.5f; z= -0.5f; s=1.0f; t=1.0f}
+      {x=  0.5f; y=  0.5f; z= 0.5f;  s=1.0f; t=0.0f}
+      {x=  0.5f; y=  0.5f; z= 0.5f;  s=1.0f; t=0.0f}
+      {x= -0.5f; y=  0.5f; z=  0.5f; s=0.0f; t= 0.0f}
+      {x= -0.5f; y=  0.5f; z= -0.5f; s=0.0f; t= 1.0f}
+      |]
   let window = Window.Create WindowOptions.Default
   window.Title <- "Secondhand"
 
   window.add_Load (fun () -> 
     let gl = GL.GetApi window
-    let ebo = gl.GenBuffer ()
     let vbo = gl.GenBuffer()
     let vao = gl.GenVertexArray()
     let shaderHandle = createShader "vert.glsl" "frag.glsl" gl
@@ -97,14 +133,12 @@ let main args =
     gl.BindBuffer(GLEnum.ArrayBuffer, vbo)
     gl.BufferData(BufferTargetARB.ArrayBuffer, ReadOnlySpan vertices, BufferUsageARB.StaticDraw)
 
-    gl.BindBuffer (GLEnum.ElementArrayBuffer, ebo)
-    gl.BufferData(BufferTargetARB.ElementArrayBuffer, ReadOnlySpan indices, BufferUsageARB.StaticDraw)
 
     let stride = uint32 (5 * sizeof<float32>)
 
     gl.VertexAttribPointer(0u, 3, VertexAttribPointerType.Float, false, stride, IntPtr.Zero.ToPointer())
     gl.EnableVertexAttribArray 0u
-    let offset = IntPtr.Add(IntPtr.Zero, 3*sizeof<float32>)
+    let offset = nativeint (3*sizeof<float32>)
     printf "offset: %A\n" offset
     gl.VertexAttribPointer(1u, 2, VertexAttribPointerType.Float, false, stride, offset.ToPointer())
     gl.EnableVertexAttribArray 1u
@@ -116,22 +150,21 @@ let main args =
         )
 
     let texture = LoadTexture gl
-    gl.Enable EnableCap.Blend
+    gl.Enable ( EnableCap.DepthTest)
     gl.BlendFunc (BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha)
     window.add_Render(fun _ -> 
-      gl.Clear(uint32 GLEnum.ColorBufferBit)
+      gl.Clear(uint32 GLEnum.ColorBufferBit ||| uint32 GLEnum.DepthBufferBit)
       gl.UseProgram shaderHandle
       gl.BindVertexArray vao
       gl.BindTexture (TextureTarget.Texture2D, texture)
-      let transform = gl.GetUniformLocation (shaderHandle, "uTransform" )
-      let t1 = Matrix4x4.Identity * Matrix4x4.CreateTranslation(Vector3(0.5f, 0.5f, 0f))
-      setUniformM4 gl transform t1
-    //   gl.PolygonMode(GLEnum.FrontAndBack, PolygonMode.Line)
-      gl.DrawElements(PrimitiveType.Triangles, uint indices.Length, DrawElementsType.UnsignedInt, 0n.ToPointer() )
-      let t2 = Matrix4x4.Identity * Matrix4x4.CreateTranslation(Vector3(-0.5f, -0.5f, 0f))
-      setUniformM4 gl transform t2
-      gl.DrawElements(PrimitiveType.Triangles, uint indices.Length, DrawElementsType.UnsignedInt, 0n.ToPointer() )
-
+      let modelLoc = gl.GetUniformLocation (shaderHandle, "model")
+      setUniformM4 gl modelLoc model
+      let viewLoc = gl.GetUniformLocation (shaderHandle, "view")
+      setUniformM4 gl viewLoc view
+      let projLoc = gl.GetUniformLocation (shaderHandle, "projection")
+      setUniformM4 gl projLoc proj
+      gl.DrawArrays(PrimitiveType.Triangles, 0, 36u )
+    
     )
 
     window.add_Resize(fun size ->
