@@ -81,6 +81,12 @@ let main args =
         camera.Strafe -moveSpeed
       if keyboard.IsKeyPressed Key.D then
         camera.Strafe moveSpeed
+
+      model.UpdateUniform ("viewPos",Shader.Triple(camera.position.X, camera.position.Y, camera.position.Z))
+      let time = float32 window.Time
+      light.UpdateTransform (
+          Matrix4x4.CreateScale 0.2f * Matrix4x4.CreateTranslation(Vector3(3f * sin time, 1f, 3f * cos time - 0.5f)))
+      model.UpdateUniform ("lightPos", Shader.Triple(3f * sin time, 1f, 3f * cos time - 0.5f))
     )
 
     window.add_Resize(fun size ->

@@ -8,8 +8,8 @@ type Model =
         vertices: array<float32>
         vao: uint32
         context: GL
-        shader: Shader.Shader
-        transform: Matrix4x4
+        mutable shader: Shader.Shader
+        mutable transform: Matrix4x4
     }
     member this.Render (camera: Camera.Camera) =
       this.shader.Use()
@@ -19,6 +19,11 @@ type Model =
       this.shader.SetUniformM4 ("projection", camera.Projection ())
       this.context.DrawArrays(PrimitiveType.Triangles, 0, 36u )
 
+    member this.UpdateUniform (k, v) =
+        this.shader.uniforms <- this.shader.uniforms |> Map.add k v
+
+    member this.UpdateTransform t =
+        this.transform <- t
 let private vertices = 
     [|
         -0.5f; -0.5f; -0.5f;  0.0f;  0.0f; -1.0f;
