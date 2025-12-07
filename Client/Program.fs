@@ -5,7 +5,6 @@ open Silk.NET.OpenGL
 open Silk.NET.Input
 open Silk.NET.Windowing
 
-
 [<EntryPoint>]
 let main args =
   let window = Window.Create WindowOptions.Default
@@ -13,19 +12,36 @@ let main args =
 
   window.add_Load (fun () -> 
     let gl = GL.GetApi window
-    let model = 
-      Model.CreateCube 
-        gl 
-        (
-          Matrix4x4.CreateRotationX (Single.DegreesToRadians -55f) *
-          Matrix4x4.CreateRotationY(Single.DegreesToRadians -24f) * 
-          Matrix4x4.CreateRotationZ(Single.DegreesToRadians 25f)
-        )
-
     let mutable camera = Camera.Create ()
+    let normalMat x = 
+      let success, r = Matrix4x4.Invert x
+      if not success then failwith "could not invert"
+      Matrix4x4.Transpose r
 
-    gl.ClearColor Color.CornflowerBlue
+    let model =
+      let world = Matrix4x4.Identity
+      let norm = normalMat world
+      Model.Create
+        gl 
+        world
+        norm
+        false
+    let light =
+      let world =
+          Matrix4x4.CreateScale 0.2f *
+          Matrix4x4.CreateTranslation(Vector3(1.2f, 1.0f, 2.0f))
+      let norm = normalMat world
+      Model.Create
+        gl
+        world
+        norm
+        true
 
+
+    gl.ClearColor Color.Black
+
+    gl.Enable EnableCap.DepthTest
+    gl.BlendFunc (BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha)
     
     let input = window.CreateInput()
     let keyboard = input.Keyboards.Item 0
@@ -51,6 +67,7 @@ let main args =
     window.add_Render(fun _ -> 
       gl.Clear(uint32 GLEnum.ColorBufferBit ||| uint32 GLEnum.DepthBufferBit)
       model.Render camera
+      light.Render camera
     
     )
 

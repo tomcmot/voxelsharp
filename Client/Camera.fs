@@ -22,7 +22,7 @@ type Camera =
 
     member this.Rotate (xOffset, yOffset) =
         this.yaw <- this.yaw + xOffset
-        this.pitch <- Math.Clamp(this.pitch + yOffset, -89f, 89f)
+        this.pitch <- Math.Clamp(this.pitch - yOffset, -89f, 89f)
         let yaw = Single.DegreesToRadians this.yaw
         let pitch = Single.DegreesToRadians this.pitch
         let direction = Vector3(
