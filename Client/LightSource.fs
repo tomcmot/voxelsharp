@@ -7,6 +7,7 @@ type LightSource =
         vao: uint32
         context: GL
         shader: Shader.Shader
+        mutable color: Vector3
         mutable transform: Matrix4x4
     }
     member this.Render (camera: Camera.Camera) =
@@ -15,12 +16,13 @@ type LightSource =
       this.shader.SetUniform ("model", this.transform)
       this.shader.SetUniform ("view", camera.View())
       this.shader.SetUniform ("projection", camera.Projection ())
+      this.shader.SetUniform ("color", this.color)
       this.context.DrawArrays(PrimitiveType.Triangles, 0, 36u )
 
     member this.UpdateTransform t =
         this.transform <- t
 
-let Create (gl:GL) transform  =
+let Create (gl:GL) transform color  =
     let shader =
         Shader.Create 
             "light/vert.glsl" 
@@ -30,5 +32,6 @@ let Create (gl:GL) transform  =
         vao= Mesh.CubeVao gl false
         context= gl
         shader=shader
+        color= color
         transform=transform
     }
