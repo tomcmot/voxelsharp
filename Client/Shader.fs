@@ -10,8 +10,7 @@ type ColorRGB = Vector3
 [<Struct>]
 type Material =
   {
-    ambient: ColorRGB
-    diffuse: ColorRGB
+    diffuse: uint32
     specular: ColorRGB
     shininess: float32
   }
@@ -32,6 +31,9 @@ type Shader =
     }
     member this.Use () =
       this.context.UseProgram this.program
+    member this.SetUniform (k: string, i: int) =
+      let loc = this.context.GetUniformLocation (this.program, k)
+      this.context.Uniform1(loc, i)
     member this.SetUniform (k: string, f: float32) =
       let loc = this.context.GetUniformLocation (this.program, k)
       this.context.Uniform1(loc , f)
@@ -53,10 +55,12 @@ type Shader =
         this.context.UniformMatrix4 (location, false, span)
 
     member this.SetMaterial (mat: Material) =
-      this.SetUniform("material.ambient", mat.ambient)
-      this.SetUniform("material.diffuse", mat.diffuse)
+      this.SetUniform("material.diffuse", 0)
       this.SetUniform("material.specular", mat.specular)
       this.SetUniform("material.shininess", mat.shininess)
+      this.context.ActiveTexture TextureUnit.Texture0
+      this.context.BindTexture (TextureTarget.Texture2D, mat.diffuse)
+      
     member this.SetLight (light: Light) =
       this.SetUniform("light.position", light.position)
       this.SetUniform ("light.ambient", light.ambient)

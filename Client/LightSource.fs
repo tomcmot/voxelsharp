@@ -29,7 +29,7 @@ let Create (gl:GL) transform color  =
             "light/frag.glsl" 
             gl
     {
-        vao= Mesh.CubeVao gl false
+        vao= Mesh.CubeVao gl
         context= gl
         shader=shader
         color= color

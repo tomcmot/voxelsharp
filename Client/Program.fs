@@ -20,8 +20,7 @@ let main args =
         gl 
         world
         {
-            ambient = Vector3(1.0f, 0.5f, 0.31f)
-            diffuse = Vector3(1.0f, 0.5f, 0.31f)
+            diffuse = Texture.Load gl "texture/crate.png"
             specular = Vector3(0.5f, 0.5f, 0.5f)
             shininess = 32f
           }
@@ -91,9 +90,9 @@ let main args =
       let pos = Vector3(3f * sin time, 1f, 3f * cos time - 0.5f)
       light.UpdateTransform (
           Matrix4x4.CreateScale 0.2f * Matrix4x4.CreateTranslation(pos))
-      light.color <- Vector3(max 0.1f (sin (time * 2f)), max 0.1f (sin(time * 0.7f)), max 0.1f (sin(time * 1.3f)))
-      model.lighting.diffuse <- light.color * 0.5f
-      model.lighting.ambient <- light.color * 0.2f
+      // light.color <- Vector3(max 0.1f (sin (time * 2f)), max 0.1f (sin(time * 0.7f)), max 0.1f (sin(time * 1.3f)))
+      // model.lighting.diffuse <- light.color * 0.5f
+      // model.lighting.ambient <- light.color * 0.2f
       model.lighting.position <- pos
     )
 

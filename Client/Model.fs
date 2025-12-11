@@ -1,6 +1,9 @@
 module Model
 open Silk.NET.OpenGL
+open System
+open System.IO
 open System.Numerics
+open StbImageSharp
 let private normal x =
       let success, r = Matrix4x4.Invert x
       if not success then failwith "could not invert"
@@ -38,7 +41,7 @@ let Create (gl:GL) transform material lighting viewPos =
             "texture/frag.glsl" 
             gl
     {
-        vao= Mesh.CubeVao gl true
+        vao= Mesh.CubeVao gl
         context= gl
         shader=shader
         transform=transform
