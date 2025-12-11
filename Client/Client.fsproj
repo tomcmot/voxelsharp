@@ -6,6 +6,8 @@
   <ItemGroup>
     <Compile Include="Camera.fs" />
     <Compile Include="Shader.fs" />
+    <Compile Include="Mesh.fs" />
+    <Compile Include="LightSource.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

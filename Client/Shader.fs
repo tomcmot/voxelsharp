@@ -5,41 +5,63 @@ open System.Runtime.InteropServices
 open Silk.NET.OpenGL
 open System.IO
 
-type Uniform =
-  | Single of float32
-  | Pair of float32 * float32
-  | Triple of float32 * float32 * float32
-  | Quad of float32 * float32 * float32 * float32
-  | Mat4 of Matrix4x4
+type ColorRGB = Vector3
+
+[<Struct>]
+type Material =
+  {
+    ambient: ColorRGB
+    diffuse: ColorRGB
+    specular: ColorRGB
+    shininess: float32
+  }
+[<Struct>]
+type Light =
+  {
+    mutable position: ColorRGB
+    mutable ambient: ColorRGB
+    mutable diffuse: ColorRGB
+    mutable specular: ColorRGB
+  }
 
 [<Struct>]
 type Shader =
     {
         context: GL
         program: uint
-        mutable uniforms: Map<string, Uniform>
     }
     member this.Use () =
-      let prog = this.program
-      let ctx = this.context
-      let SetUniformM4 = this.SetUniformM4
       this.context.UseProgram this.program
-      this.uniforms
-      |> Map.iter (fun k v ->
-        let loc = ctx.GetUniformLocation(prog, k)
-        match v with
-        | Single f -> ctx.Uniform1(loc, f)
-        | Pair (a,b) -> ctx.Uniform2(loc, a, b)
-        | Triple (a,b,c) -> ctx.Uniform3(loc, a,b,c)
-        | Quad (a,b,c,d) -> ctx.Uniform4(loc, a,b ,c,d)
-        | Mat4 m -> SetUniformM4 (k,m)
-      )
-    member this.SetUniformM4 (key: string, value) =
+    member this.SetUniform (k: string, f: float32) =
+      let loc = this.context.GetUniformLocation (this.program, k)
+      this.context.Uniform1(loc , f)
+      printf "%s: %i: %A\n" k loc f
+    member this.SetUniform (k: string, v2: Vector2) =
+      this.context.Uniform2(this.context.GetUniformLocation (this.program, k), v2)
+    member this.SetUniform (k: string, v3: Vector3) =
+      let loc = this.context.GetUniformLocation (this.program, k)
+      if loc = 0 then failwith "loc is 0"
+      this.context.Uniform3(loc, v3)
+      printf "%s: %i: %A\n" k loc v3
+    member this.SetUniform (key: string, m4) =
         let location = this.context.GetUniformLocation (this.program, key)
-        let mutable auxVal = value    
+
+        printf "%s: %i: %A\n" key location m4
+        let mutable auxVal = m4    
         let s = ReadOnlySpan &auxVal
         let span = MemoryMarshal.Cast<Matrix4x4, float32> s
         this.context.UniformMatrix4 (location, false, span)
+
+    member this.SetMaterial (mat: Material) =
+      this.SetUniform("material.ambient", mat.ambient)
+      this.SetUniform("material.diffuse", mat.diffuse)
+      this.SetUniform("material.specular", mat.specular)
+      this.SetUniform("material.shininess", mat.shininess)
+    member this.SetLight (light: Light) =
+      this.SetUniform("light.position", light.position)
+      this.SetUniform ("light.ambient", light.ambient)
+      this.SetUniform("light.diffuse", light.diffuse)
+      this.SetUniform("light.specular", light.specular)
 
     interface IDisposable with        
         member this.Dispose(): unit = 
@@ -58,7 +80,7 @@ let private compileShader path (kind:ShaderType) (gl: GL) =
     failwith (sprintf "Error compiling shader %d:\n%s\n" shader msg)
   shader
 
-let Create vertPath fragPath (gl: GL) (uniforms:Map<string,Uniform>) =
+let Create vertPath fragPath (gl: GL) =
   let vertexShader = compileShader vertPath ShaderType.VertexShader gl
   let fragmentShader = compileShader fragPath ShaderType.FragmentShader gl
   let handle = gl.CreateProgram()
@@ -74,4 +96,4 @@ let Create vertPath fragPath (gl: GL) (uniforms:Map<string,Uniform>) =
   gl.DeleteShader vertexShader
   gl.DeleteShader fragmentShader
 
-  {context=gl; program= handle; uniforms=uniforms}
+  {context=gl; program= handle;}

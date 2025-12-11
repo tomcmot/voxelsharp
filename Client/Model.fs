@@ -1,105 +1,49 @@
 module Model
 open Silk.NET.OpenGL
 open System.Numerics
-open System
-
+let private normal x =
+      let success, r = Matrix4x4.Invert x
+      if not success then failwith "could not invert"
+      Matrix4x4.Transpose r
 type Model =
     {
-        vertices: array<float32>
         vao: uint32
         context: GL
-        mutable shader: Shader.Shader
+        shader: Shader.Shader
         mutable transform: Matrix4x4
+        mutable normal: Matrix4x4
+        mutable viewPos: Vector3
+        mutable material: Shader.Material
+        mutable lighting: Shader.Light
     }
     member this.Render (camera: Camera.Camera) =
       this.shader.Use()
       this.context.BindVertexArray this.vao
-      this.shader.SetUniformM4 ("model", this.transform)
-      this.shader.SetUniformM4 ("view", camera.View())
-      this.shader.SetUniformM4 ("projection", camera.Projection ())
+      this.shader.SetUniform ("model", this.transform)
+      this.shader.SetUniform ("view", camera.View())
+      this.shader.SetUniform ("projection", camera.Projection ())
+      this.shader.SetUniform ("normal", this.normal)
+      this.shader.SetUniform ("viewPos", this.viewPos)
+      this.shader.SetMaterial this.material
+      this.shader.SetLight this.lighting
       this.context.DrawArrays(PrimitiveType.Triangles, 0, 36u )
-
-    member this.UpdateUniform (k, v) =
-        this.shader.uniforms <- this.shader.uniforms |> Map.add k v
-
     member this.UpdateTransform t =
         this.transform <- t
-let private vertices = 
-    [|
-        -0.5f; -0.5f; -0.5f;  0.0f;  0.0f; -1.0f;
-         0.5f; -0.5f; -0.5f;  0.0f;  0.0f; -1.0f;
-         0.5f;  0.5f; -0.5f;  0.0f;  0.0f; -1.0f;
-         0.5f;  0.5f; -0.5f;  0.0f;  0.0f; -1.0f;
-        -0.5f;  0.5f; -0.5f;  0.0f;  0.0f; -1.0f;
-        -0.5f; -0.5f; -0.5f;  0.0f;  0.0f; -1.0f;
-        -0.5f; -0.5f;  0.5f;  0.0f;  0.0f;  1.0f;
-         0.5f; -0.5f;  0.5f;  0.0f;  0.0f;  1.0f;
-         0.5f;  0.5f;  0.5f;  0.0f;  0.0f;  1.0f;
-         0.5f;  0.5f;  0.5f;  0.0f;  0.0f;  1.0f;
-        -0.5f;  0.5f;  0.5f;  0.0f;  0.0f;  1.0f;
-        -0.5f; -0.5f;  0.5f;  0.0f;  0.0f;  1.0f;
-        -0.5f;  0.5f;  0.5f; -1.0f;  0.0f;  0.0f;
-        -0.5f;  0.5f; -0.5f; -1.0f;  0.0f;  0.0f;
-        -0.5f; -0.5f; -0.5f; -1.0f;  0.0f;  0.0f;
-        -0.5f; -0.5f; -0.5f; -1.0f;  0.0f;  0.0f;
-        -0.5f; -0.5f;  0.5f; -1.0f;  0.0f;  0.0f;
-        -0.5f;  0.5f;  0.5f; -1.0f;  0.0f;  0.0f;
-         0.5f;  0.5f;  0.5f;  1.0f;  0.0f;  0.0f;
-         0.5f;  0.5f; -0.5f;  1.0f;  0.0f;  0.0f;
-         0.5f; -0.5f; -0.5f;  1.0f;  0.0f;  0.0f;
-         0.5f; -0.5f; -0.5f;  1.0f;  0.0f;  0.0f;
-         0.5f; -0.5f;  0.5f;  1.0f;  0.0f;  0.0f;
-         0.5f;  0.5f;  0.5f;  1.0f;  0.0f;  0.0f;
-        -0.5f; -0.5f; -0.5f;  0.0f; -1.0f;  0.0f;
-         0.5f; -0.5f; -0.5f;  0.0f; -1.0f;  0.0f;
-         0.5f; -0.5f;  0.5f;  0.0f; -1.0f;  0.0f;
-         0.5f; -0.5f;  0.5f;  0.0f; -1.0f;  0.0f;
-        -0.5f; -0.5f;  0.5f;  0.0f; -1.0f;  0.0f;
-        -0.5f; -0.5f; -0.5f;  0.0f; -1.0f;  0.0f;
-        -0.5f;  0.5f; -0.5f;  0.0f;  1.0f;  0.0f;
-         0.5f;  0.5f; -0.5f;  0.0f;  1.0f;  0.0f;
-         0.5f;  0.5f;  0.5f;  0.0f;  1.0f;  0.0f;
-         0.5f;  0.5f;  0.5f;  0.0f;  1.0f;  0.0f;
-        -0.5f;  0.5f;  0.5f;  0.0f;  1.0f;  0.0f;
-        -0.5f;  0.5f; -0.5f;  0.0f;  1.0f;  0.0f;
-    |]
+        this.normal <- normal t
 
-let private stride = uint32 (6 * sizeof<float32>)
-
-let Create (gl:GL) transform normal isLight =
-    let vbo = gl.GenBuffer()
-    let vao = gl.GenVertexArray()
+let Create (gl:GL) transform material lighting viewPos =
     let shader =
-        if isLight then
-            Shader.Create "light/vert.glsl" "light/frag.glsl" gl Map.empty
-        else
-            Shader.Create 
-                "texture/vert.glsl" 
-                "texture/frag.glsl" 
-                gl 
-                (
-                    Map.ofList 
-                        [
-                            "lightColor", Shader.Triple (1.0f, 1f, 1.0f)
-                            "lightPos", Shader.Triple (1.2f, 1.0f, 2.0f)
-                            "objectColor", Shader.Triple(1.0f, 0.5f, 0.3f)
-                            "normal", Shader.Mat4 normal
-                        ]
-                    )
-
-    gl.BindVertexArray vao
-    gl.BindBuffer(GLEnum.ArrayBuffer, vbo)
-    gl.BufferData(BufferTargetARB.ArrayBuffer, ReadOnlySpan vertices, BufferUsageARB.StaticDraw)
-    gl.VertexAttribPointer(0u, 3, VertexAttribPointerType.Float, false, stride, IntPtr.Zero.ToPointer())
-    gl.EnableVertexAttribArray 0u
-    if not isLight then
-        let normalOffset = nativeint (3 * sizeof<float32>)
-        gl.VertexAttribPointer(1u, 3, VertexAttribPointerType.Float, false, stride, normalOffset.ToPointer())
-        gl.EnableVertexAttribArray 1u
+        Shader.Create 
+            "texture/vert.glsl" 
+            "texture/frag.glsl" 
+            gl
     {
-        vertices= vertices
-        vao= vao
+        vao= Mesh.CubeVao gl true
         context= gl
         shader=shader
         transform=transform
+        normal= normal transform
+        viewPos= viewPos
+        material = material
+        lighting = lighting
     }

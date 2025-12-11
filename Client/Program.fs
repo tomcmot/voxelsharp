@@ -13,29 +13,32 @@ let main args =
   window.add_Load (fun () -> 
     let gl = GL.GetApi window
     let mutable camera = Camera.Create ()
-    let normalMat x = 
-      let success, r = Matrix4x4.Invert x
-      if not success then failwith "could not invert"
-      Matrix4x4.Transpose r
 
     let model =
       let world = Matrix4x4.Identity
-      let norm = normalMat world
       Model.Create
         gl 
         world
-        norm
-        false
+        {
+            ambient = Vector3(1.0f, 0.5f, 0.31f)
+            diffuse = Vector3(1.0f, 0.5f, 0.31f)
+            specular = Vector3(0.5f, 0.5f, 0.5f)
+            shininess = 32f
+          }
+          {
+            position= Vector3(1.2f, 1.0f, 2.0f)
+            ambient= Vector3(0.2f,0.2f, 0.2f)
+            diffuse= Vector3(0.5f,0.5f,0.5f)
+            specular=Vector3(1f,1f,1f)
+          }
+          camera.position
     let light =
       let world =
           Matrix4x4.CreateScale 0.2f *
           Matrix4x4.CreateTranslation(Vector3(1.2f, 1.0f, 2.0f))
-      let norm = normalMat world
-      Model.Create
+      LightSource.Create
         gl
         world
-        norm
-        true
 
 
     gl.ClearColor Color.Black
@@ -82,11 +85,12 @@ let main args =
       if keyboard.IsKeyPressed Key.D then
         camera.Strafe moveSpeed
 
-      model.UpdateUniform ("viewPos",Shader.Triple(camera.position.X, camera.position.Y, camera.position.Z))
+      model.viewPos <- camera.position
       let time = float32 window.Time
+      let pos = Vector3(3f * sin time, 1f, 3f * cos time - 0.5f)
       light.UpdateTransform (
-          Matrix4x4.CreateScale 0.2f * Matrix4x4.CreateTranslation(Vector3(3f * sin time, 1f, 3f * cos time - 0.5f)))
-      model.UpdateUniform ("lightPos", Shader.Triple(3f * sin time, 1f, 3f * cos time - 0.5f))
+          Matrix4x4.CreateScale 0.2f * Matrix4x4.CreateTranslation(pos))
+      model.lighting.position <- pos
     )
 
     window.add_Resize(fun size ->
