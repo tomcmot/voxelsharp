@@ -11,7 +11,7 @@ type ColorRGB = Vector3
 type Material =
   {
     diffuse: uint32
-    specular: ColorRGB
+    specular: uint32
     shininess: float32
   }
 [<Struct>]
@@ -56,10 +56,12 @@ type Shader =
 
     member this.SetMaterial (mat: Material) =
       this.SetUniform("material.diffuse", 0)
-      this.SetUniform("material.specular", mat.specular)
+      this.SetUniform("material.specular", 1)
       this.SetUniform("material.shininess", mat.shininess)
       this.context.ActiveTexture TextureUnit.Texture0
       this.context.BindTexture (TextureTarget.Texture2D, mat.diffuse)
+      this.context.ActiveTexture TextureUnit.Texture1
+      this.context.BindTexture (TextureTarget.Texture2D, mat.specular)
       
     member this.SetLight (light: Light) =
       this.SetUniform("light.position", light.position)

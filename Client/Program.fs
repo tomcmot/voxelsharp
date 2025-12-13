@@ -21,7 +21,7 @@ let main args =
         world
         {
             diffuse = Texture.Load gl "texture/crate.png"
-            specular = Vector3(0.5f, 0.5f, 0.5f)
+            specular = Texture.Load gl "texture/crate_specular.png"
             shininess = 32f
           }
           {
