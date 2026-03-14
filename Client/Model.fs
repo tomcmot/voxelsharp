@@ -17,9 +17,8 @@ type Model =
         mutable normal: Matrix4x4
         mutable viewPos: Vector3
         mutable material: Shader.Material
-        mutable lighting: Shader.Light
     }
-    member this.Render (camera: Camera.Camera) =
+    member this.Render (camera: Camera.Camera, dirLight :Shader.DirLight, pointLights: array<Shader.PointLight>) =
       this.shader.Use()
       this.context.BindVertexArray this.vao
       this.shader.SetUniform ("model", this.transform)
@@ -28,13 +27,14 @@ type Model =
       this.shader.SetUniform ("normal", this.normal)
       this.shader.SetUniform ("viewPos", this.viewPos)
       this.shader.SetMaterial this.material
-      this.shader.SetLight this.lighting
+      this.shader.SetDirLight dirLight
+      this.shader.SetPointLights pointLights
       this.context.DrawArrays(PrimitiveType.Triangles, 0, 36u )
     member this.UpdateTransform t =
         this.transform <- t
         this.normal <- normal t
 
-let Create (gl:GL) transform material lighting viewPos =
+let Create (gl:GL) transform material viewPos =
     let shader =
         Shader.Create 
             "texture/vert.glsl" 
@@ -48,5 +48,4 @@ let Create (gl:GL) transform material lighting viewPos =
         normal= normal transform
         viewPos= viewPos
         material = material
-        lighting = lighting
     }

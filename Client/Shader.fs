@@ -14,13 +14,26 @@ type Material =
     specular: uint32
     shininess: float32
   }
+
 [<Struct>]
-type Light =
+type DirLight =
   {
-    mutable position: ColorRGB
-    mutable ambient: ColorRGB
-    mutable diffuse: ColorRGB
-    mutable specular: ColorRGB
+    direction: Vector3
+    ambient: Vector3
+    diffuse: Vector3
+    specular: Vector3
+  }
+
+[<Struct>]
+type PointLight =
+  {
+    position: Vector3
+    constant: float32
+    linear: float32
+    quadratic: float32
+    ambient: Vector3
+    diffuse: Vector3
+    specular: Vector3
   }
 
 [<Struct>]
@@ -63,12 +76,23 @@ type Shader =
       this.context.ActiveTexture TextureUnit.Texture1
       this.context.BindTexture (TextureTarget.Texture2D, mat.specular)
       
-    member this.SetLight (light: Light) =
-      this.SetUniform("light.position", light.position)
-      this.SetUniform ("light.ambient", light.ambient)
-      this.SetUniform("light.diffuse", light.diffuse)
-      this.SetUniform("light.specular", light.specular)
-
+    member this.SetDirLight (light: DirLight) =
+      this.SetUniform("dirLight.direction", light.direction)
+      this.SetUniform ("dirLight.ambient", light.ambient)
+      this.SetUniform("dirLight.diffuse", light.diffuse)
+      this.SetUniform("dirLight.specular", light.specular)
+    member this.SetPointLights (lights: array<PointLight>) =
+      for i = 0 to lights.Length - 1 do
+        let location = sprintf "pointLights[%i]." i
+        this.SetUniform(location + "position", lights[i].position)
+        this.SetUniform(location + "ambient", lights[i].ambient)
+        this.SetUniform(location + "diffuse", lights[i].diffuse)
+        this.SetUniform(location + "specular", lights[i].specular)
+        this.SetUniform(location + "constant", lights[i].constant)
+        this.SetUniform(location + "linear", lights[i].linear)
+        this.SetUniform(location + "quadratic", lights[i].quadratic)
+        
+ 
     interface IDisposable with        
         member this.Dispose(): unit = 
             this.context.DeleteProgram this.program
