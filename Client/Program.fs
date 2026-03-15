@@ -1,5 +1,4 @@
-﻿open System
-open System.Numerics
+﻿open System.Numerics
 open System.Drawing
 open Silk.NET.OpenGL
 open Silk.NET.Input
