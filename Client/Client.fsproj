@@ -5,10 +5,12 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Camera.fs" />
+    
     <Compile Include="Shader.fs" />
     <Compile Include="Mesh.fs" />
     <Compile Include="LightSource.fs" />
     <Compile Include="Texture.fs" />
+    <Compile Include="Cube.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
@@ -16,6 +18,7 @@
     <ProjectReference Include="..\Engine\Engine.fsproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="LiteNetLib" Version="2.0.2" />
     <PackageReference Include="Silk.NET" Version="2.22.0" />
     <PackageReference Include="StbImageSharp" Version="2.30.15" />
   </ItemGroup>

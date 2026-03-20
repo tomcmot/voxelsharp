@@ -1,45 +1,41 @@
 ﻿namespace Engine
+open System
+open System.Numerics
 
-module Shapes2D =
-    [<Struct>]
-    type Point = {x: float; y: float}
-    [<Struct>]
-    type Triangle = {a: Point; b: Point; c: Point}
-    [<Struct>]
-    type Edge = {p: Point; q: Point}
+module Entity =
+    type Shape =
+        | Box of Vector3 * Vector3
+    type Components = { position: Vector3 option array; bounds: Shape array; velocity: Vector3 option array }
+    let mutable components = {position= [||]; bounds=[||]; velocity=[||]}
 
-    type Polygon = Point array
+module World =
 
-module Geometry =
-    open Shapes2D
-    let distanceSq p q =
-        let dx = p.x - q.x
-        let dy = p.y - q.y
-        dx * dx + dy * dy
+    type Voxel =
+        | Air
+        | Solid
+        | Fluid
+    let world : Voxel array3d = Array3D.create 16 16 16 Air 
 
-    let tile (domain: float) p =
+module Physics =
+    let private query () =
+        let count = Entity.components.position.Length
         seq {
-            for i in [-1.;0;1] do
-                for j in [-1.;0;1] do
-                    {x= p.x + domain * i; y= p.y + domain * j}
+            for i = 0 to count do
+                if Entity.components.position[i].IsSome && Entity.components.velocity[i].IsSome then
+                    yield i, Entity.components.position[i].Value, Entity.components.position[i].Value
         }
-    let wrappedDistanceSq domain p q =
-        let qs = tile domain q
-        qs 
-        |> Seq.map (fun q' -> q', distanceSq p q') 
-        |> Seq.minBy snd
+    
+    let private updatePosition i (p: Vector3) =
+        Entity.components.position[i] <- Some p
 
-module Delauney =
-    open Shapes2D
-    type VoronoiCell =
-        {points: Point array}
-    type VoronoiDiagram =
-        {cells: VoronoiCell array; edges: Edge array; triangles: Triangle array}
-    let triangulate domain (points: Point array) =
-        let origin = {x=0;y=0}
-        let invalidTri = {a=origin; b=origin; c=origin}
-        let invalidEdge = {p=origin; q=origin}
-        let triangles = Array.create (3 * points.Length) invalidTri
-        let edges = Array.create (2 * points.Length) invalidEdge
-        let cells : VoronoiCell array= Array.create points.Length {points= [||]}
-        {cells=cells; edges=edges; triangles=triangles}
+    let private roundAway a b =
+        if b < 0f then
+            int (ceil a)
+        else
+            int (floor a)
+
+    let run (delta: float32) =
+        for id, pos, vel in query() do
+            let bottom = roundAway pos.X vel.X, roundAway pos.Y vel.Y, roundAway pos.Z vel.Z
+            updatePosition id (pos + delta * vel)
+        
