@@ -10,7 +10,7 @@ type LightSource =
         mutable color: Vector3
         mutable transform: Matrix4x4
     }
-    member this.Render (camera: Camera.Camera) =
+    member this.Render (camera: Client.Systems.Camera) =
       this.shader.Use()
       this.context.BindVertexArray this.vao
       this.shader.SetUniform ("model", this.transform)

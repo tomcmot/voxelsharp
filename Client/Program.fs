@@ -19,7 +19,6 @@ let main args =
 
   window.add_Load (fun () -> 
     let gl = GL.GetApi window
-    let mutable camera = Camera.Create ()
 
     let sceneDirLight : Shader.DirLight = 
       {
@@ -77,7 +76,6 @@ let main args =
             specular = Texture.Load gl "texture/crate_specular.png"
             shininess = 32f
           }
-          camera.position
     let lights =
       lightPositions
       |> Array.map (fun pos ->
@@ -99,44 +97,21 @@ let main args =
     let input = window.CreateInput()
     let keyboard = input.Keyboards.Item 0
     if keyboard <> null then
-        keyboard.add_KeyDown (fun keyboard key code ->
-            if key = Key.Escape then
-                window.Close()
-        )
+        keyboard.add_KeyDown (Client.Systems.Keyboard.keyDown window)
     for mouse in input.Mice do
-      let mutable lastPosition = mouse.Position
+      Client.Systems.Mouse.lastPosition <- mouse.Position
       mouse.Cursor.CursorMode <- CursorMode.Raw
-      mouse.add_MouseMove (fun _ position -> 
-        let lookSensitivity = 0.1f
-        let xOffset = (position.X - lastPosition.X) * lookSensitivity
-        let yOffset = (position.Y - lastPosition.Y) * lookSensitivity
-        lastPosition <- position
-        camera.Rotate (xOffset, yOffset)
-      )
-      mouse.add_Scroll (fun _ scroll -> 
-        camera.Zoom scroll.Y
-      )
+      mouse.add_MouseMove Client.Systems.Mouse.move
+      mouse.add_Scroll Client.Systems.Mouse.scroll
     
     window.add_Render(fun _ -> 
       gl.Clear(uint32 GLEnum.ColorBufferBit ||| uint32 GLEnum.DepthBufferBit)
-      model.Render (camera, sceneDirLight, scenePointLights)
-      lights |> Array.iter (fun light -> light.Render camera)
+      model.Render (Client.Systems.Camera.camera, sceneDirLight, scenePointLights)
+      lights |> Array.iter (fun light -> light.Render Client.Systems.Camera.camera)
     
     )
 
-    window.add_Update (fun delta ->
-      let moveSpeed = float32 (2.5 * delta)
-      if keyboard.IsKeyPressed Key.W then
-        camera.Walk moveSpeed
-      if keyboard.IsKeyPressed Key.S then
-        camera.Walk -moveSpeed
-      if keyboard.IsKeyPressed Key.A then
-        camera.Strafe -moveSpeed
-      if keyboard.IsKeyPressed Key.D then
-        camera.Strafe moveSpeed
-
-      model.viewPos <- camera.position
-    )
+    window.add_Update (Client.Systems.Physics.update keyboard)
 
     window.add_Resize(fun size ->
       gl.Viewport size
