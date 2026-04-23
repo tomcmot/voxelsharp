@@ -4,14 +4,16 @@
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    
-    <Compile Include="Camera.fs" /><Compile Include="Player.fs" />
-    <Compile Include="Input.fs" /><Compile Include="Physics.fs" />
+    <Compile Include="Camera.fs" />
+    <Compile Include="Player.fs" />
+    <Compile Include="Input.fs" />
+    <Compile Include="Physics.fs" />
     <Compile Include="Shader.fs" />
     <Compile Include="Mesh.fs" />
-    <Compile Include="LightSource.fs" />
-    <Compile Include="Texture.fs" />
+    <Compile Include="Graphics.fs" /><Compile Include="LightSource.fs" />
+    
     <Compile Include="Model.fs" />
+    
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>

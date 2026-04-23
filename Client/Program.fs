@@ -1,16 +1,9 @@
-﻿open System.Numerics
+﻿open System
+open System.Numerics
 open System.Drawing
 open Silk.NET.OpenGL
 open Silk.NET.Input
 open Silk.NET.Windowing
-
-let private lightPositions = [|
-        Vector3( 0.7f,  0.2f,  2.0f)
-        Vector3( 2.3f, -3.3f, -4.0f)
-        Vector3(-4.0f,  2.0f, -12.0f)
-        Vector3( 0.0f,  0.0f, -3.0f)
-|]
-
 
 [<EntryPoint>]
 let main args =
@@ -19,7 +12,8 @@ let main args =
 
   window.add_Load (fun () -> 
     let gl = GL.GetApi window
-
+    let context = new Graphics.Context (gl)
+    context.CreateBuffer ()
     let sceneDirLight : Shader.DirLight = 
       {
         direction = Vector3(-0.2f, -1f, -0.3f)
@@ -27,68 +21,28 @@ let main args =
         diffuse = Vector3(0.4f,0.4f,0.4f)
         specular = Vector3(0.5f,0.5f,0.5f)
       }
-    let scenePointLights : array<Shader.PointLight> =
-      [|
-        {
-          position= lightPositions[0]
-          ambient= Vector3(0.05f, 0.05f, 0.05f)
-          diffuse= Vector3(0.8f, 0.8f, 0.8f)
-          specular = Vector3(1f, 1f, 1f)
-          constant= 1f
-          linear= 0.09f
-          quadratic= 0.032f
-        }
-        {
-          position= lightPositions[1]
-          ambient= Vector3(0.05f, 0.05f, 0.05f)
-          diffuse= Vector3(0.8f, 0.8f, 0.8f)
-          specular = Vector3(1f, 1f, 1f)
-          constant= 1f
-          linear= 0.09f
-          quadratic= 0.032f
-        }
-        {
-          position= lightPositions[2]
-          ambient= Vector3(0.05f, 0.05f, 0.05f)
-          diffuse= Vector3(0.8f, 0.8f, 0.8f)
-          specular = Vector3(1f, 1f, 1f)
-          constant= 1f
-          linear= 0.09f
-          quadratic= 0.032f
-        }
-        {
-          position= lightPositions[3]
-          ambient= Vector3(0.05f, 0.05f, 0.05f)
-          diffuse= Vector3(0.8f, 0.8f, 0.8f)
-          specular = Vector3(1f, 1f, 1f)
-          constant= 1f
-          linear= 0.09f
-          quadratic= 0.032f
-        }
-      |]
+    let shaders: Shader.Shaders = 
+      {
+        cube=
+          context.CreateShader
+            "texture/vert.glsl" 
+            "texture/frag.glsl" 
+        light= 
+          context.CreateShader
+            "light/vert.glsl" 
+            "light/frag.glsl" 
+      }
     let model =
       let world = Matrix4x4.Identity
       Model.Create
-        gl 
         world
         {
-            diffuse = Texture.Load gl "texture/crate.png"
-            specular = Texture.Load gl "texture/crate_specular.png"
+            diffuse = context.LoadTexture "texture/crate.png"
+            specular = context.LoadTexture "texture/crate_specular.png"
             shininess = 32f
           }
-    let lights =
-      lightPositions
-      |> Array.map (fun pos ->
-        let world =
-            Matrix4x4.CreateScale 0.2f *
-            Matrix4x4.CreateTranslation pos
-        LightSource.Create
-          gl
-          world
-          (Vector3(1f,1f,1f))
-      )
-
-
+          shaders.cube
+    
     gl.ClearColor Color.Black
 
     gl.Enable EnableCap.DepthTest
@@ -106,8 +60,8 @@ let main args =
     
     window.add_Render(fun _ -> 
       gl.Clear(uint32 GLEnum.ColorBufferBit ||| uint32 GLEnum.DepthBufferBit)
-      model.Render (Client.Systems.Camera.camera, sceneDirLight, scenePointLights)
-      lights |> Array.iter (fun light -> light.Render Client.Systems.Camera.camera)
+      model.Render (context, Client.Systems.Camera.camera, sceneDirLight, LightSource.scenePointLights)
+      LightSource.Render context shaders.light Client.Systems.Camera.camera
     
     )
 
@@ -123,6 +77,7 @@ let main args =
       gl.BindTexture(TextureTarget.Texture2D, 0u)
       gl.BindVertexArray 0u
       gl.UseProgram 0u
+      (context :> IDisposable).Dispose()
     )
   )
 
