@@ -92,9 +92,11 @@ let processNeighbors (chunk: Chunk.Chunk) x y z =
     |> Array.collect (getVerticesForDir x y z)
 
 let generateMesh (chunk: Chunk.Chunk): float32[] =
-    chunk |> Array.mapi (fun i v ->
-        if v > 0u then
-            Chunk.decodeIndex (processNeighbors chunk) i
-        else
-            [||]
-    ) |> Array.collect id
+    let f = processNeighbors chunk
+    seq {
+        for i = 0 to chunk.Length - 1 do
+        if chunk[i] > 0u then
+            let struct(x,y,z) = Chunk.idx i
+            yield! f x y z
+    } 
+    |> Array.ofSeq

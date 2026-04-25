@@ -6,15 +6,17 @@ type Direction =
     | NegX | NegY | NegZ
 
 let directions = [| PosX; PosY; PosZ; NegX; NegY; NegZ|]
+
+let inline idx i =
+    struct(uint8 (i &&& 0xF), uint8 (i >>> 4 &&& 0xF),uint8 (i >>> 8 &&& 0xF))
+
 let decodeIndex f (i :int) =
-    let x = uint8 (i &&& 0b1111)
-    let y = uint8 (i &&& 0b11110000 >>> 4)
-    let z = uint8 (i &&& 0b111100000000 >>> 8)
+    let struct(x,y,z) = idx i
     f x y z
 let init f =
     Array.init (16*16*16) (decodeIndex f)
 
-let private encodeIndex (x: byte) (y : byte) (z : byte) =
+let inline private encodeIndex (x: byte) (y : byte) (z : byte) =
     int (uint z <<< 8 ||| (uint y <<< 4) ||| uint x)
 let getVoxel (chunk: Chunk) x y z =
     chunk[encodeIndex x y z]
@@ -39,24 +41,6 @@ let getNeighborAt (chunk:Chunk) x y z dir =
         then 0u
         else chunk[encodeIndex (byte x) (byte y) (byte z)]
     safeGet (positionAt x y z dir)
-
-let getNeighbors (chunk: Chunk) x y z =
-    let target = getVoxel chunk x y z
-    target, seq {
-        for i in [-1;0;1] do
-            for j in [-1; 0; 1] do
-                for k in [-1; 0; 1] do
-                    if i <> 0 && j <> 0 && k <> 0 then 
-                        let xi = int x + i
-                        let yj = int y + j
-                        let zk = int z + k
-                        if // convert to access neighboring chunks
-                            xi > -1 && xi < 16 &&
-                            yj > -1 && yj < 16 &&
-                            zk > -1 && zk < 16
-                        then
-                            yield getVoxel chunk (byte xi) (byte yj) (byte zk), i, j, k
-    }
 
 let plane =
     init (fun x y z -> 
