@@ -65,3 +65,23 @@ let Init (gl:GL) =
         gl.VertexAttribPointer(2u, 2, VertexAttribPointerType.Float, false, stride, texOffset.ToPointer())
         gl.EnableVertexAttribArray 2u
         cubeVao <- vao
+let Create (gl:GL) (vertices: float32[]) =
+    let vbo = gl.GenBuffer()
+    gl.BindBuffer(GLEnum.ArrayBuffer, vbo)
+    gl.BufferData(BufferTargetARB.ArrayBuffer, ReadOnlySpan vertices, BufferUsageARB.StaticDraw)
+    
+    let vao = gl.GenVertexArray()
+    let stride = uint32 (8 * sizeof<float32>)
+    gl.BindBuffer(GLEnum.ArrayBuffer, vbo)
+    gl.BindVertexArray vao
+    gl.VertexAttribPointer(0u, 3, VertexAttribPointerType.Float, false, stride, IntPtr.Zero.ToPointer())
+    gl.EnableVertexAttribArray 0u
+
+    let normalOffset = nativeint (3 * sizeof<float32>)
+    gl.VertexAttribPointer(1u, 3, VertexAttribPointerType.Float, false, stride, normalOffset.ToPointer())
+    gl.EnableVertexAttribArray 1u
+
+    let texOffset = nativeint (6 * sizeof<float32>)
+    gl.VertexAttribPointer(2u, 2, VertexAttribPointerType.Float, false, stride, texOffset.ToPointer())
+    gl.EnableVertexAttribArray 2u
+    vao, vbo

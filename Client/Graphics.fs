@@ -9,15 +9,20 @@ open StbImageSharp
 type Context(gl:GL) =
     let mutable shaders = []
     let mutable textures = []
-    let mutable buffers = []
+    do
+      Mesh.Init gl
+    let mutable buffers = [Mesh.cubeVao; Mesh.cubeVbo]
+
     member _.CreateShader vert frag =
         let handle = Shader.Create vert frag gl
         shaders <- handle :: shaders
         handle
 
-    member _.CreateBuffer () =
-        Mesh.Init gl
-        buffers <- Mesh.cubeVao :: Mesh.cubeVbo :: buffers
+    member _.CreateBuffer (vertices) =
+        let vao, vbo = Mesh.Create gl vertices
+        buffers <- vao :: vbo :: buffers
+        vao
+      
     member _.LoadTexture path =
         let inputbytes= File.ReadAllBytes path
         let result = ImageResult.FromMemory (inputbytes, ColorComponents.RedGreenBlueAlpha)

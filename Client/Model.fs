@@ -8,13 +8,15 @@ let private normal x =
 type Model =
     {
         shader: Shader.Shader
+        vao: uint32
+        vertices: uint
         mutable transform: Matrix4x4
         mutable normal: Matrix4x4
         mutable material: Shader.Material
     }
     member this.Render (context: Graphics.Context, camera: Client.Systems.Camera, dirLight :Shader.DirLight, pointLights: array<Shader.PointLight>) =
       context.Use this.shader
-      context.BindVertexArray Mesh.cubeVao
+      context.BindVertexArray this.vao
       context.SetUniform (this.shader, "model", this.transform)
       context.SetUniform (this.shader, "view", camera.View())
       context.SetUniform (this.shader, "projection", camera.Projection ())
@@ -23,14 +25,16 @@ type Model =
       context.SetMaterial (this.shader, this.material)
       context.SetDirLight (this.shader, dirLight)
       context.SetPointLights (this.shader, pointLights)
-      context.DrawArrays(PrimitiveType.Triangles, 0, 36u )
+      context.DrawArrays(PrimitiveType.Triangles, 0, this.vertices )
     member this.UpdateTransform t =
         this.transform <- t
         this.normal <- normal t
 
-let Create transform material shader =
+let Create vao transform material shader vertices =
     {
+        vao = vao
         shader=shader
+        vertices=vertices
         transform=transform
         normal= normal transform
         material = material

@@ -13,7 +13,7 @@ let main args =
   window.add_Load (fun () -> 
     let gl = GL.GetApi window
     let context = new Graphics.Context (gl)
-    context.CreateBuffer ()
+    
     let sceneDirLight : Shader.DirLight = 
       {
         direction = Vector3(-0.2f, -1f, -0.3f)
@@ -35,6 +35,7 @@ let main args =
     let model =
       let world = Matrix4x4.Identity
       Model.Create
+        Mesh.cubeVao
         world
         {
             diffuse = context.LoadTexture "texture/crate.png"
@@ -42,7 +43,21 @@ let main args =
             shininess = 32f
           }
           shaders.cube
-    
+          36u
+    let chunkVertices = ChunkRenderer.generateMesh Chunk.plane
+    let chunkVao = context.CreateBuffer chunkVertices
+    let chunkModel = 
+      Model.Create
+        chunkVao
+          Matrix4x4.Identity
+
+        {
+            diffuse = context.LoadTexture "texture/crate.png"
+            specular = context.LoadTexture "texture/crate_specular.png"
+            shininess = 32f
+          }
+          shaders.cube
+          (ChunkRenderer.getVertexCount chunkVertices)
     gl.ClearColor Color.Black
 
     gl.Enable EnableCap.DepthTest
@@ -60,7 +75,7 @@ let main args =
     
     window.add_Render(fun _ -> 
       gl.Clear(uint32 GLEnum.ColorBufferBit ||| uint32 GLEnum.DepthBufferBit)
-      model.Render (context, Client.Systems.Camera.camera, sceneDirLight, LightSource.scenePointLights)
+      chunkModel.Render (context, Client.Systems.Camera.camera, sceneDirLight, LightSource.scenePointLights)
       LightSource.Render context shaders.light Client.Systems.Camera.camera
     
     )
