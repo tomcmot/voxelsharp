@@ -5,16 +5,19 @@ type Direction =
     | PosX | PosY | PosZ
     | NegX | NegY | NegZ
 
+let private ChunkDim = 16
+let private ChunkSize = ChunkDim * ChunkDim * ChunkDim
+
 let directions = [| PosX; PosY; PosZ; NegX; NegY; NegZ|]
 
 let inline idx i =
     struct(uint8 (i &&& 0xF), uint8 (i >>> 4 &&& 0xF),uint8 (i >>> 8 &&& 0xF))
 
-let decodeIndex f (i :int) =
-    let struct(x,y,z) = idx i
-    f x y z
 let init f =
-    Array.init (16*16*16) (decodeIndex f)
+    let decodeIndex f (i :int) =
+        let struct(x,y,z) = idx i
+        f x y z
+    Array.init ChunkSize (decodeIndex f)
 
 let inline private encodeIndex (x: byte) (y : byte) (z : byte) =
     int (uint z <<< 8 ||| (uint y <<< 4) ||| uint x)
