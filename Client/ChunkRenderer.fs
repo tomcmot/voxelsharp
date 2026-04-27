@@ -14,10 +14,17 @@ type GreedyRect =
     }
 
 let voxelForDir (chunk: Chunk.Chunk) (dir : Chunk.Direction) a b slice =
+    let showVoxel x y z =
+        if Chunk.getNeighborAt chunk x y z dir = 0u
+        then Chunk.getVoxel chunk x y z
+        else 0u
     match dir with
-    | Chunk.PosX | Chunk.NegX -> Chunk.getVoxel chunk slice a b
-    | Chunk.PosY | Chunk.NegY -> Chunk.getVoxel chunk a slice b
-    | Chunk.PosZ | Chunk.NegZ -> Chunk.getVoxel chunk a b slice
+    | Chunk.PosX | Chunk.NegX -> 
+        showVoxel slice a b
+    | Chunk.PosY | Chunk.NegY -> 
+        showVoxel a slice b
+    | Chunk.PosZ | Chunk.NegZ -> 
+        showVoxel a b slice
 let buildMaskForSlice (chunk: Chunk.Chunk) (dir : Chunk.Direction) slice =
     Array2D.init 16 16 (fun a b -> voxelForDir chunk dir (byte a) (byte b) slice)
 
