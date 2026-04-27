@@ -26,7 +26,7 @@ let voxelForDir (chunk: Chunk.Chunk) (dir : Chunk.Direction) a b slice =
     | Chunk.PosZ | Chunk.NegZ -> 
         showVoxel a b slice
 let buildMaskForSlice (chunk: Chunk.Chunk) (dir : Chunk.Direction) slice =
-    Array2D.init 16 16 (fun a b -> voxelForDir chunk dir (byte a) (byte b) slice)
+    Array2D.init 16 16 (fun a b -> voxelForDir chunk dir a b slice)
 
 let greedyRectForSlice (mask : Face [,]) =
     let validRow face i j w =
@@ -181,7 +181,7 @@ let generateMeshGreedy (chunk: Chunk.Chunk) =
     let verts = ResizeArray<float32> 2000
     for dir in  Chunk.directions do
         for i = 0 to 15 do
-            let mask = buildMaskForSlice chunk dir (byte i)
+            let mask = buildMaskForSlice chunk dir i
             for rect in greedyRectForSlice mask do
                 verts.AddRange(emitTriangles dir i rect)
     verts.ToArray ()

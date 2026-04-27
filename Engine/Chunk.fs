@@ -11,7 +11,7 @@ let private ChunkSize = ChunkDim * ChunkDim * ChunkDim
 let directions = [| PosX; PosY; PosZ; NegX; NegY; NegZ|]
 
 let inline idx i =
-    struct(uint8 (i &&& 0xF), uint8 (i >>> 4 &&& 0xF),uint8 (i >>> 8 &&& 0xF))
+    struct(i &&& 0xF, i >>> 4 &&& 0xF,i >>> 8 &&& 0xF)
 
 let init f =
     let decodeIndex f (i :int) =
@@ -19,15 +19,15 @@ let init f =
         f x y z
     Array.init ChunkSize (decodeIndex f)
 
-let inline private encodeIndex (x: byte) (y : byte) (z : byte) =
-    int (uint z <<< 8 ||| (uint y <<< 4) ||| uint x)
+let inline private encodeIndex x y z =
+    z <<< 8 |||  (y <<< 4) ||| x
 let getVoxel (chunk: Chunk) x y z =
     chunk[encodeIndex x y z]
 
 let setVoxel (chunk: Chunk) value x y z =
     chunk[encodeIndex x y z] <- value
 
-let positionAt (x:byte) (y:byte) (z:byte) dir = 
+let positionAt x y z dir = 
     let x = int x
     let y = int y
     let z = int z
@@ -42,10 +42,10 @@ let getNeighborAt (chunk:Chunk) x y z dir =
     let safeGet (x,y,z) =
         if x < 0 || y < 0 || z < 0 || x > 15 || y > 15 || z > 15
         then 0u
-        else chunk[encodeIndex (byte x) (byte y) (byte z)]
+        else chunk[encodeIndex x y z]
     safeGet (positionAt x y z dir)
 
 let plane =
     init (fun x y z -> 
-        if y = 0uy then 1u else 0u
+        if y = 0 then 1u else 0u
     )
