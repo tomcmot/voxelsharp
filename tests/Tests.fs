@@ -18,10 +18,10 @@ let ``plane is a plane`` () =
         Assert.True(expected[i] = Chunk.plane[i], sprintf "At %i, expected %i actual %i\n" i expected[i] Chunk.plane[i])
 
 let ``GetVoxel tests`` () =
-    Assert.Equal(1u, Chunk.getVoxel Chunk.plane 0uy 0uy 0uy)
-    Assert.Equal(0u, Chunk.getVoxel Chunk.plane 1uy 0uy 0uy)
+    Assert.Equal(1u, Chunk.getVoxel Chunk.plane 0 0 0)
+    Assert.Equal(0u, Chunk.getVoxel Chunk.plane 1 0 0)
 
 let ``SetVoxel tests`` () =
     let copy = Array.copy Chunk.plane
-    Chunk.setVoxel copy 3u 1uy 2uy 3uy
-    Assert.Equal(3u, Chunk.getVoxel copy 1uy 2uy 3uy)
+    Chunk.setVoxel copy 3u 1 2 3
+    Assert.Equal(3u, Chunk.getVoxel copy 1 2 3)
