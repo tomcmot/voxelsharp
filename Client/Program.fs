@@ -44,7 +44,7 @@ let main args =
           }
           shaders.cube
           36u
-    let chunkVertices = ChunkRenderer.generateMesh Chunk.plane
+    let chunkVertices = ChunkRenderer.generateMeshGreedy Chunk.plane
     let chunkVao = context.CreateBuffer chunkVertices
     let chunkModel = 
       Model.Create
