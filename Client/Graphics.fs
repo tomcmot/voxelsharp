@@ -9,9 +9,7 @@ open StbImageSharp
 type Context(gl:GL) =
     let mutable shaders = []
     let mutable textures = []
-    do
-      Mesh.Init gl
-    let mutable buffers = [Mesh.cubeVao; Mesh.cubeVbo]
+    let mutable buffers = []
 
     member _.CreateShader vert frag =
         let handle = Shader.Create vert frag gl
@@ -21,7 +19,12 @@ type Context(gl:GL) =
     member _.CreateBuffer (vertices) =
         let vao, vbo = Mesh.Create gl vertices
         buffers <- vao :: vbo :: buffers
-        vao
+        vao, vbo
+
+    member _.UpdateBuffer vao vbo (vertices: float32 array) =
+      gl.BindVertexArray vao
+      gl.BindBuffer (BufferTargetARB.ArrayBuffer, vbo)
+      gl.BufferData (BufferTargetARB.ArrayBuffer, ReadOnlySpan vertices, BufferUsageARB.StaticDraw)
 
     member _.CreateShaderBuffer () =
       let ssbo = gl.GenBuffer()
@@ -57,18 +60,14 @@ type Context(gl:GL) =
     member _.SetUniform (program, k: string, f: float32) =
       let loc = gl.GetUniformLocation (program, k)
       gl.Uniform1(loc , f)
-      printf "%s: %i: %A\n" k loc f
     member _.SetUniform (program, k: string, v2: Vector2) =
       gl.Uniform2(gl.GetUniformLocation (program, k), v2)
     member _.SetUniform (program, k: string, v3: Vector3) =
       let loc = gl.GetUniformLocation (program, k)
       if loc = 0 then failwith "loc is 0"
       gl.Uniform3(loc, v3)
-      printf "%s: %i: %A\n" k loc v3
     member _.SetUniform (program, key: string, m4) =
         let location = gl.GetUniformLocation (program, key)
-
-        printf "%s: %i: %A\n" key location m4
         let mutable auxVal = m4    
         let s = ReadOnlySpan &auxVal
         let span = MemoryMarshal.Cast<Matrix4x4, float32> s
@@ -89,10 +88,11 @@ type Context(gl:GL) =
       this.SetUniform(program, "dirLight.diffuse", light.diffuse)
       this.SetUniform(program, "dirLight.specular", light.specular)
     member this.SetPointLights (program, buffer, lights: array<Shader.PointLight>) =
+      this.SetUniform (program, "numLights", lights.Length)
       gl.BindBuffer (BufferTargetARB.ShaderStorageBuffer, buffer)
       let span = ReadOnlySpan lights
       gl.BufferData (BufferTargetARB.ShaderStorageBuffer, span, BufferUsageARB.DynamicDraw)
-      this.SetUniform (program, "numLights", lights.Length)
+      
     interface IDisposable with
         member _.Dispose () = 
             shaders |> List.iter (fun shader -> gl.DeleteProgram shader)

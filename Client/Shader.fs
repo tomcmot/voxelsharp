@@ -70,9 +70,9 @@ let Create vertPath fragPath (gl: GL) =
 
 let genPointLights positions = 
   positions
-  |> Seq.map (fun (struct(x,y,z)) ->
+  |> Seq.map (fun position ->
     {
-      position= Vector3(float32 x + 0.5f, float32 y + 0.5f, float32 z + 0.5f)
+      position= position
       ambient= Vector3(0.05f, 0.05f, 0.05f)
       diffuse= Vector3(0.8f, 0.8f, 0.8f)
       specular = Vector3(1f, 1f, 1f)

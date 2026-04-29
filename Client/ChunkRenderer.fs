@@ -1,6 +1,10 @@
 module ChunkRenderer
+open System.Numerics
+open Engine.Block
+open Engine.Chunk
+open Silk.NET.OpenGL
 
-open Engine
+open Shader
 let getVertexCount (mesh: float32[]): uint =
     uint mesh.Length / 8u
 
@@ -10,25 +14,25 @@ type GreedyRect =
         B: int
         W: int
         H: int
-        BlockId: Chunk.Block
+        BlockId: Block
     }
 
-let voxelForDir (chunk: Chunk.Chunk) (dir : Chunk.Direction) a b slice =
+let voxelForDir (chunk: Chunk) (dir : Direction) a b slice =
     let showVoxel x y z =
-        if Chunk.isTransparent (Chunk.getNeighborAt chunk x y z dir)
-        then Chunk.getVoxel chunk x y z
-        else Chunk.Block.Void
+        if isTransparent (getNeighborAt chunk x y z dir)
+        then getVoxel chunk x y z
+        else Block.Void
     match dir with
-    | Chunk.PosX | Chunk.NegX -> 
+    | PosX | NegX -> 
         showVoxel slice a b
-    | Chunk.PosY | Chunk.NegY -> 
+    | PosY | NegY -> 
         showVoxel a slice b
-    | Chunk.PosZ | Chunk.NegZ -> 
+    | PosZ | NegZ -> 
         showVoxel a b slice
-let buildMaskForSlice (chunk: Chunk.Chunk) (dir : Chunk.Direction) slice =
+let buildMaskForSlice (chunk: Chunk) (dir : Direction) slice =
     Array2D.init 16 16 (fun a b -> voxelForDir chunk dir a b slice)
 
-let greedyRectForSlice (mask : Chunk.Block [,]) =
+let greedyRectForSlice (mask : Block [,]) =
     let validRow face i j w =
         let mutable valid = true
         let mutable j' = j
@@ -41,13 +45,13 @@ let greedyRectForSlice (mask : Chunk.Block [,]) =
     let clearPositions i j h w =
         for x = i to i + h - 1 do
             for y = j to j + w - 1 do
-                mask[x,y] <- Chunk.Block.Void
+                mask[x,y] <- Block.Void
 
     let mutable rects = []
     for i = 0 to 15 do
         for j = 0 to 15 do
             let face = mask[i,j]
-            if not <| Chunk.isTransparent face then
+            if not <| isTransparent face then
                 let mutable w = 1
                 while j+w < 16 && mask[i,j+w] = face  do
                     w <- w + 1
@@ -65,17 +69,17 @@ let greedyRectForSlice (mask : Chunk.Block [,]) =
                         BlockId = face
                     } :: rects
     rects
-let emitTriangles (dir: Chunk.Direction) slice (rect: GreedyRect) =
+let emitTriangles (dir: Direction) slice (rect: GreedyRect) =
     let h = float32 rect.H
     let w = float32 rect.W
     let {A=a; B=b} = rect
     let t0, tw, th =
-        if rect.BlockId = Chunk.Block.Light then
+        if rect.BlockId = Block.Light then
             -1f,-1f,-1f
         else 
             0f, w, h
     match dir with
-    | Chunk.PosX ->
+    | PosX ->
         let x = float32 slice
         let y = float32 a
         let z = float32 b
@@ -93,7 +97,7 @@ let emitTriangles (dir: Chunk.Direction) slice (rect: GreedyRect) =
         x1; y1; z1; 1f; 0f; 0f;   tw; th;
         x1; y1; z;  1f; 0f; 0f;   t0; th;
         |]
-    | Chunk.PosY -> 
+    | PosY -> 
         let x = float32 a
         let y = float32 slice
         let z = float32 b
@@ -111,7 +115,7 @@ let emitTriangles (dir: Chunk.Direction) slice (rect: GreedyRect) =
         x1; y1; z1; 0f; 1f; 0f;   tw; th;
         x; y1; z1;  0f; 1f; 0f;   t0; th;
         |]
-    | Chunk.PosZ ->
+    | PosZ ->
         let x = float32 a
         let y = float32 b
         let z = float32 slice
@@ -130,7 +134,7 @@ let emitTriangles (dir: Chunk.Direction) slice (rect: GreedyRect) =
         x1; y1; z1; 0f; 0f; 1f;   th; tw;
         x; y1; z1;  0f; 0f; 1f;   t0; tw;
         |]
-    | Chunk.NegX -> 
+    | NegX -> 
         let x = float32 slice
         let y = float32 a
         let z = float32 b
@@ -147,7 +151,7 @@ let emitTriangles (dir: Chunk.Direction) slice (rect: GreedyRect) =
         x; y; z;   -1f; 0f; 0f;   tw; th;
         x; y; z1;  -1f; 0f; 0f;   t0; th;
         |]
-    | Chunk.NegY -> 
+    | NegY -> 
         let x = float32 a
         let y = float32 slice
         let z = float32 b
@@ -164,7 +168,7 @@ let emitTriangles (dir: Chunk.Direction) slice (rect: GreedyRect) =
         x; y; z;   0f; -1f; 0f;   tw; th;
         x1; y; z;  0f; -1f; 0f;   t0; th;
         |]
-    | Chunk.NegZ -> 
+    | NegZ -> 
         let x = float32 a
         let y = float32 b
         let z = float32 slice
@@ -182,21 +186,59 @@ let emitTriangles (dir: Chunk.Direction) slice (rect: GreedyRect) =
         x1; y; z;  0f; 0f; -1f;   t0; tw;
         |]
 
-let generateMeshGreedy (chunk: Chunk.Chunk) =
+let generateMeshGreedy (chunk: Chunk) =
     let verts = ResizeArray<float32> 2000
-    for dir in  Chunk.directions do
+    for dir in  directions do
         for i = 0 to 15 do
             let mask = buildMaskForSlice chunk dir i
             for rect in greedyRectForSlice mask do
                     verts.AddRange(emitTriangles dir i rect)
     verts.ToArray ()
 
-let getLightPositions (chunk: Chunk.Chunk) =
+let getLightPositions (coords:Vector3) (chunk: Chunk) =
     seq {
         for i = 0 to chunk.Length - 1 do
-            if chunk[i] = Chunk.Block.Light then
-                yield Chunk.idx i
+            if chunk[i] = Block.Light then
+                let struct(x,y,z) = idx i
+                yield Vector3(float32 x, float32 y, float32 z) + coords
     }
-        
+let private normal x =
+      let success, r = Matrix4x4.Invert x
+      if not success then failwith "could not invert"
+      Matrix4x4.Transpose r 
 
+type Renderer (context: Graphics.Context, chunk, coords, shader, shaderBuffer, material) =
+    let mutable mesh = [||]
+    let mutable generated = false
+    let mutable dirty = true
     
+    let vao, vbo = context.CreateBuffer mesh
+    let transform = 
+        Matrix4x4.CreateTranslation coords
+    let normal = normal transform
+
+    member _.GenerateMesh () =
+        if generated = false || dirty = true then
+            mesh <- generateMeshGreedy chunk
+            context.UpdateBuffer vao vbo mesh
+            generated <- true
+            dirty <- false
+
+    member _.Generated with get () = generated
+    member _.Dirty 
+        with get () = dirty
+        and set v = dirty <- v
+    member _.PointLights with get () = genPointLights (getLightPositions coords chunk)
+    member _.Render (camera: Client.Systems.Camera) dirLight (pointLights: PointLight array) =
+        printf "Point lights: %i\n" pointLights.Length
+        context.Use shader
+        context.BindVertexArray vao
+        context.SetUniform (shader, "model", transform)
+        context.SetUniform (shader, "view", camera.View())
+        context.SetUniform (shader, "projection", camera.Projection ())
+        context.SetUniform (shader, "normal", normal)
+        context.SetUniform (shader, "viewPos", camera.position)
+        context.SetMaterial (shader, material)
+        context.SetDirLight (shader, dirLight)
+        context.SetPointLights (shader, shaderBuffer, pointLights)
+        context.DrawArrays(PrimitiveType.Triangles, 0, uint (mesh.Length/8))

@@ -5,7 +5,7 @@ open Silk.NET.OpenGL
 open Silk.NET.Input
 open Silk.NET.Windowing
 
-open Engine
+open State
 [<EntryPoint>]
 let main args =
   let window = Window.Create WindowOptions.Default
@@ -22,26 +22,7 @@ let main args =
         diffuse = Vector3(0.4f,0.4f,0.4f)
         specular = Vector3(0.5f,0.5f,0.5f)
       }
-    let shader = 
-          context.CreateShader
-            "texture/vert.glsl" 
-            "texture/frag.glsl" 
-    let shaderBuffer =
-      context.CreateShaderBuffer ()
-    let chunkVertices = ChunkRenderer.generateMeshGreedy Chunk.plane
-    let chunkVao = context.CreateBuffer chunkVertices
-    let chunkModel = 
-      Model.Create
-        chunkVao
-          Matrix4x4.Identity
-
-        {
-            diffuse = context.LoadTexture "texture/crate.png"
-            specular = context.LoadTexture "texture/crate_specular.png"
-            shininess = 32f
-          }
-          shader
-          (ChunkRenderer.getVertexCount chunkVertices)
+    let chunk = WorldState context
     gl.ClearColor Color.Black
 
     gl.Enable EnableCap.DepthTest
@@ -59,10 +40,12 @@ let main args =
     
     window.add_Render(fun _ -> 
       gl.Clear(uint32 GLEnum.ColorBufferBit ||| uint32 GLEnum.DepthBufferBit)
-      chunkModel.Render (context, Client.Systems.Camera.camera, sceneDirLight,shaderBuffer, ChunkRenderer.getLightPositions Chunk.plane)   
+      chunk.Render (Client.Systems.Camera.camera, sceneDirLight)
     )
 
-    window.add_Update (Client.Systems.Physics.update keyboard)
+    window.add_Update (fun delta ->
+      chunk.GenerateMeshes()
+      Client.Systems.Physics.update keyboard delta)
 
     window.add_Resize(fun size ->
       gl.Viewport size

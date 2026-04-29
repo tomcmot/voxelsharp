@@ -1,13 +1,6 @@
 module Engine.Chunk
 
-type Block =
-    | Void = 0u
-    | Air = 1u
-    | Light = 2u
-    | Box = 3u
-
-let isTransparent (block:Block) =
-    block < Block.Light
+open Engine.Block
 
 type Chunk = Block array
 type Direction =
@@ -58,7 +51,7 @@ let plane =
     init (fun x y z -> 
         if y = 0 
             then Block.Box 
-            else if y = 3 && (x + 1) % 6 = 0 && (z + 1) % 6 = 0 
+            else if y = 3 && (x + 1) % 8 = 0 && (z + 1) % 8 = 0 
                 then Block.Light
                 else Block.Air
     )

@@ -3,8 +3,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
-  <ItemGroup>
-    <Compile Include="Chunk.fs" />
+  <ItemGroup><Compile Include="Block.fs" />
+    <Compile Include="Chunk.fs" /><Compile Include="World.fs" />
     <Compile Include="Entity.fs" />
     <Compile Include="Library.fs" />
   </ItemGroup>

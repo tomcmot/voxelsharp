@@ -16,7 +16,7 @@ type Camera =
     member this.View () =
         Matrix4x4.CreateLookAt (this.position, this.position + this.front, this.up)
     member this.Projection () =
-        Matrix4x4.CreatePerspectiveFieldOfView (Single.DegreesToRadians this.zoom, 800f/600f, 0.1f, 100f)
+        Matrix4x4.CreatePerspectiveFieldOfView (Single.DegreesToRadians this.zoom, 800f/600f, 0.1f, 200f)
 
 module Camera =
   let mutable camera =
