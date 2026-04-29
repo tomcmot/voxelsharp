@@ -14,7 +14,7 @@ type Model =
         mutable normal: Matrix4x4
         mutable material: Shader.Material
     }
-    member this.Render (context: Graphics.Context, camera: Client.Systems.Camera, dirLight :Shader.DirLight, pointLights: array<Shader.PointLight>) =
+    member this.Render (context: Graphics.Context, camera: Client.Systems.Camera, dirLight :Shader.DirLight, shaderBuffer, pointLights: struct(int * int * int) seq) =
       context.Use this.shader
       context.BindVertexArray this.vao
       context.SetUniform (this.shader, "model", this.transform)
@@ -24,7 +24,7 @@ type Model =
       context.SetUniform (this.shader, "viewPos", camera.position)
       context.SetMaterial (this.shader, this.material)
       context.SetDirLight (this.shader, dirLight)
-      context.SetPointLights (this.shader, pointLights)
+      context.SetPointLights (this.shader, shaderBuffer, Shader.genPointLights pointLights)
       context.DrawArrays(PrimitiveType.Triangles, 0, this.vertices )
     member this.UpdateTransform t =
         this.transform <- t

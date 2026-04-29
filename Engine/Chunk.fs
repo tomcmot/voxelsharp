@@ -1,6 +1,15 @@
-module Chunk
+module Engine.Chunk
 
-type Chunk = uint array
+type Block =
+    | Void = 0u
+    | Air = 1u
+    | Light = 2u
+    | Box = 3u
+
+let isTransparent (block:Block) =
+    block < Block.Light
+
+type Chunk = Block array
 type Direction =
     | PosX | PosY | PosZ
     | NegX | NegY | NegZ
@@ -41,11 +50,15 @@ let positionAt x y z dir =
 let getNeighborAt (chunk:Chunk) x y z dir =
     let safeGet (x,y,z) =
         if x < 0 || y < 0 || z < 0 || x > 15 || y > 15 || z > 15
-        then 0u
+        then Block.Void
         else chunk[encodeIndex x y z]
     safeGet (positionAt x y z dir)
 
 let plane =
     init (fun x y z -> 
-        if y = 0 then 1u else 0u
+        if y = 0 
+            then Block.Box 
+            else if y = 3 && (x + 1) % 6 = 0 && (z + 1) % 6 = 0 
+                then Block.Light
+                else Block.Air
     )

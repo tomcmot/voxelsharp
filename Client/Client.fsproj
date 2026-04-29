@@ -10,7 +10,7 @@
     <Compile Include="Physics.fs" />
     <Compile Include="Shader.fs" />
     <Compile Include="Mesh.fs" />
-    <Compile Include="Graphics.fs" /><Compile Include="ChunkRenderer.fs" /><Compile Include="LightSource.fs" />
+    <Compile Include="Graphics.fs" /><Compile Include="ChunkRenderer.fs" />
     
     <Compile Include="Model.fs" />
     

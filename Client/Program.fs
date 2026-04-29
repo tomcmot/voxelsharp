@@ -5,6 +5,7 @@ open Silk.NET.OpenGL
 open Silk.NET.Input
 open Silk.NET.Windowing
 
+open Engine
 [<EntryPoint>]
 let main args =
   let window = Window.Create WindowOptions.Default
@@ -21,29 +22,12 @@ let main args =
         diffuse = Vector3(0.4f,0.4f,0.4f)
         specular = Vector3(0.5f,0.5f,0.5f)
       }
-    let shaders: Shader.Shaders = 
-      {
-        cube=
+    let shader = 
           context.CreateShader
             "texture/vert.glsl" 
             "texture/frag.glsl" 
-        light= 
-          context.CreateShader
-            "light/vert.glsl" 
-            "light/frag.glsl" 
-      }
-    let model =
-      let world = Matrix4x4.Identity
-      Model.Create
-        Mesh.cubeVao
-        world
-        {
-            diffuse = context.LoadTexture "texture/crate.png"
-            specular = context.LoadTexture "texture/crate_specular.png"
-            shininess = 32f
-          }
-          shaders.cube
-          36u
+    let shaderBuffer =
+      context.CreateShaderBuffer ()
     let chunkVertices = ChunkRenderer.generateMeshGreedy Chunk.plane
     let chunkVao = context.CreateBuffer chunkVertices
     let chunkModel = 
@@ -56,7 +40,7 @@ let main args =
             specular = context.LoadTexture "texture/crate_specular.png"
             shininess = 32f
           }
-          shaders.cube
+          shader
           (ChunkRenderer.getVertexCount chunkVertices)
     gl.ClearColor Color.Black
 
@@ -75,9 +59,7 @@ let main args =
     
     window.add_Render(fun _ -> 
       gl.Clear(uint32 GLEnum.ColorBufferBit ||| uint32 GLEnum.DepthBufferBit)
-      chunkModel.Render (context, Client.Systems.Camera.camera, sceneDirLight, LightSource.scenePointLights)
-      LightSource.Render context shaders.light Client.Systems.Camera.camera
-    
+      chunkModel.Render (context, Client.Systems.Camera.camera, sceneDirLight,shaderBuffer, ChunkRenderer.getLightPositions Chunk.plane)   
     )
 
     window.add_Update (Client.Systems.Physics.update keyboard)

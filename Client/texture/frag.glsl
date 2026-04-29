@@ -1,4 +1,4 @@
-#version 330 core
+#version 430 core
 out vec4 FragColor;
 
 struct Material {
@@ -19,15 +19,12 @@ struct PointLight {
     vec3 position;
     
     float constant;
-    float linear;
-    float quadratic;
-	
     vec3 ambient;
+    float linear;
     vec3 diffuse;
+    float quadratic;
     vec3 specular;
 };
-
-#define NR_POINT_LIGHTS 4
 
 in vec3 FragPos;
 in vec3 Normal;
@@ -35,8 +32,12 @@ in vec2 TexCoords;
 
 uniform vec3 viewPos;
 uniform DirLight dirLight;
-uniform PointLight pointLights[NR_POINT_LIGHTS];
 uniform Material material;
+
+layout(std430, binding=0) readonly buffer LightBuffer {
+    PointLight lights[];
+};
+uniform int numLights;
 
 // function prototypes
 vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 diffuseTexture, vec3 specularTexture);
@@ -44,24 +45,29 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
 
 void main()
 {    
-    // properties
-    vec3 norm = normalize(Normal);
-    vec3 viewDir = normalize(viewPos - FragPos);
-    vec3 diffuseTexture = vec3(texture(material.diffuse, TexCoords));
-    vec3 specularTexture = vec3(texture(material.specular, TexCoords));
-    // == =====================================================
-    // Our lighting is set up in 2 phases: directional then point lights
-    // For each phase, a calculate function is defined that calculates the corresponding color
-    // per lamp. In the main() function we take all the calculated colors and sum them up for
-    // this fragment's final color.
-    // == =====================================================
-    // phase 1: directional lighting
-    vec3 result = CalcDirLight(dirLight, norm, viewDir,diffuseTexture,specularTexture);
-    // phase 2: point lights
-    for(int i = 0; i < NR_POINT_LIGHTS; i++)
-        result += CalcPointLight(pointLights[i], norm, FragPos, viewDir,diffuseTexture,specularTexture);
-    
-    FragColor = vec4(result, 1.0);
+    if (TexCoords.x < 0.0) {
+        FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    } else {
+
+        // properties
+        vec3 norm = normalize(Normal);
+        vec3 viewDir = normalize(viewPos - FragPos);
+        vec3 diffuseTexture = vec3(texture(material.diffuse, TexCoords));
+        vec3 specularTexture = vec3(texture(material.specular, TexCoords));
+        // == =====================================================
+        // Our lighting is set up in 2 phases: directional then point lights
+        // For each phase, a calculate function is defined that calculates the corresponding color
+        // per lamp. In the main() function we take all the calculated colors and sum them up for
+        // this fragment's final color.
+        // == =====================================================
+        // phase 1: directional lighting
+        vec3 result = CalcDirLight(dirLight, norm, viewDir,diffuseTexture,specularTexture);
+        // phase 2: point lights
+        for(int i = 0; i < numLights; i++)
+            result += CalcPointLight(lights[i], norm, FragPos, viewDir,diffuseTexture,specularTexture);
+        
+        FragColor = vec4(result, 1.0);
+    }
 }
 
 // calculates the color when using a directional light.

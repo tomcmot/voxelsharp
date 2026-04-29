@@ -22,6 +22,13 @@ type Context(gl:GL) =
         let vao, vbo = Mesh.Create gl vertices
         buffers <- vao :: vbo :: buffers
         vao
+
+    member _.CreateShaderBuffer () =
+      let ssbo = gl.GenBuffer()
+      gl.BindBuffer (BufferTargetARB.ShaderStorageBuffer, ssbo)
+      gl.BindBufferBase (BufferTargetARB.ShaderStorageBuffer, 0u, ssbo)
+      buffers <- ssbo :: buffers
+      ssbo
       
     member _.LoadTexture path =
         let inputbytes= File.ReadAllBytes path
@@ -81,17 +88,11 @@ type Context(gl:GL) =
       this.SetUniform(program, "dirLight.ambient", light.ambient)
       this.SetUniform(program, "dirLight.diffuse", light.diffuse)
       this.SetUniform(program, "dirLight.specular", light.specular)
-    member this.SetPointLights (program, lights: array<Shader.PointLight>) =
-      for i = 0 to lights.Length - 1 do
-        let location = sprintf "pointLights[%i]." i
-        this.SetUniform(program, location + "position", lights[i].position)
-        this.SetUniform(program, location + "ambient", lights[i].ambient)
-        this.SetUniform(program, location + "diffuse", lights[i].diffuse)
-        this.SetUniform(program, location + "specular", lights[i].specular)
-        this.SetUniform(program, location + "constant", lights[i].constant)
-        this.SetUniform(program, location + "linear", lights[i].linear)
-        this.SetUniform(program, location + "quadratic", lights[i].quadratic)
-
+    member this.SetPointLights (program, buffer, lights: array<Shader.PointLight>) =
+      gl.BindBuffer (BufferTargetARB.ShaderStorageBuffer, buffer)
+      let span = ReadOnlySpan lights
+      gl.BufferData (BufferTargetARB.ShaderStorageBuffer, span, BufferUsageARB.DynamicDraw)
+      this.SetUniform (program, "numLights", lights.Length)
     interface IDisposable with
         member _.Dispose () = 
             shaders |> List.iter (fun shader -> gl.DeleteProgram shader)

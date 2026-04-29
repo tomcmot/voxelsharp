@@ -2,6 +2,7 @@ module Shader
 open System.Numerics
 open Silk.NET.OpenGL
 open System.IO
+open System.Runtime.InteropServices
 
 type ColorRGB = Vector3
 
@@ -22,16 +23,17 @@ type DirLight =
     specular: Vector3
   }
 
-[<Struct>]
+[<Struct; StructLayout(LayoutKind.Sequential)>]
 type PointLight =
   {
     position: Vector3
     constant: float32
-    linear: float32
-    quadratic: float32
     ambient: Vector3
+    linear: float32
     diffuse: Vector3
+    quadratic: float32
     specular: Vector3
+    _pad: float32
   }
 
 type Shader = uint32
@@ -66,9 +68,18 @@ let Create vertPath fragPath (gl: GL) =
 
   handle
 
-[<Struct>]
-type Shaders =
-  {
-    cube: Shader
-    light: Shader
-  }
+let genPointLights positions = 
+  positions
+  |> Seq.map (fun (struct(x,y,z)) ->
+    {
+      position= Vector3(float32 x + 0.5f, float32 y + 0.5f, float32 z + 0.5f)
+      ambient= Vector3(0.05f, 0.05f, 0.05f)
+      diffuse= Vector3(0.8f, 0.8f, 0.8f)
+      specular = Vector3(1f, 1f, 1f)
+      constant= 1f
+      linear= 0.09f
+      quadratic= 0.032f
+      _pad=0f
+    }
+  )
+  |> Array.ofSeq
