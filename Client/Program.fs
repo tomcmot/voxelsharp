@@ -22,7 +22,7 @@ let main args =
         diffuse = Vector3(0.4f,0.4f,0.4f)
         specular = Vector3(0.5f,0.5f,0.5f)
       }
-    let chunk = WorldState context
+    let world = WorldState context
     gl.ClearColor Color.Black
 
     gl.Enable EnableCap.DepthTest
@@ -40,11 +40,11 @@ let main args =
     
     window.add_Render(fun _ -> 
       gl.Clear(uint32 GLEnum.ColorBufferBit ||| uint32 GLEnum.DepthBufferBit)
-      chunk.Render (Client.Systems.Camera.camera, sceneDirLight)
+      world.Render (Client.Systems.Camera.camera, sceneDirLight)
     )
 
     window.add_Update (fun delta ->
-      chunk.GenerateMeshes()
+      world.GenerateMeshes()
       Client.Systems.Physics.update keyboard delta)
 
     window.add_Resize(fun size ->

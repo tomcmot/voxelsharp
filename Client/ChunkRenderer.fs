@@ -69,7 +69,7 @@ let greedyRectForSlice (mask : Block [,]) =
                         BlockId = face
                     } :: rects
     rects
-let emitTriangles (dir: Direction) slice (rect: GreedyRect) =
+let emitTriangles (offset:Vector3) (dir: Direction) slice (rect: GreedyRect) =
     let h = float32 rect.H
     let w = float32 rect.W
     let {A=a; B=b} = rect
@@ -80,9 +80,9 @@ let emitTriangles (dir: Direction) slice (rect: GreedyRect) =
             0f, w, h
     match dir with
     | PosX ->
-        let x = float32 slice
-        let y = float32 a
-        let z = float32 b
+        let x = float32 slice + offset.X
+        let y = float32 a + offset.Y
+        let z = float32 b + offset.Z
         let x1 = x+1f
         let y1 = y+h
         let z1 = z+w
@@ -98,9 +98,9 @@ let emitTriangles (dir: Direction) slice (rect: GreedyRect) =
         x1; y1; z;  1f; 0f; 0f;   t0; th;
         |]
     | PosY -> 
-        let x = float32 a
-        let y = float32 slice
-        let z = float32 b
+        let x = float32 a + offset.X
+        let y = float32 slice + offset.Y
+        let z = float32 b + offset.Z
         let x1 = x+h
         let y1 = y+1f
         let z1 = z+w
@@ -116,9 +116,9 @@ let emitTriangles (dir: Direction) slice (rect: GreedyRect) =
         x; y1; z1;  0f; 1f; 0f;   t0; th;
         |]
     | PosZ ->
-        let x = float32 a
-        let y = float32 b
-        let z = float32 slice
+        let x = float32 a + offset.X
+        let y = float32 b + offset.Y
+        let z = float32 slice + offset.Z
         let x1 = x+h
         let y1 = y+w
         let z1 = z+1f
@@ -135,9 +135,9 @@ let emitTriangles (dir: Direction) slice (rect: GreedyRect) =
         x; y1; z1;  0f; 0f; 1f;   t0; tw;
         |]
     | NegX -> 
-        let x = float32 slice
-        let y = float32 a
-        let z = float32 b
+        let x = float32 slice + offset.X
+        let y = float32 a + offset.Y
+        let z = float32 b + offset.Z
         let y1 = y + h 
         let z1 = z+w
         [|
@@ -152,9 +152,9 @@ let emitTriangles (dir: Direction) slice (rect: GreedyRect) =
         x; y; z1;  -1f; 0f; 0f;   t0; th;
         |]
     | NegY -> 
-        let x = float32 a
-        let y = float32 slice
-        let z = float32 b
+        let x = float32 a + offset.X
+        let y = float32 slice + offset.Y
+        let z = float32 b + offset.Z
         let x1 = x+h
         let z1 = z+w
         [|
@@ -169,9 +169,9 @@ let emitTriangles (dir: Direction) slice (rect: GreedyRect) =
         x1; y; z;  0f; -1f; 0f;   t0; th;
         |]
     | NegZ -> 
-        let x = float32 a
-        let y = float32 b
-        let z = float32 slice
+        let x = float32 a + offset.X
+        let y = float32 b + offset.Y
+        let z = float32 slice + offset.Z
         let x1 = x+h
         let y1 = y+w
         [|
@@ -186,13 +186,13 @@ let emitTriangles (dir: Direction) slice (rect: GreedyRect) =
         x1; y; z;  0f; 0f; -1f;   t0; tw;
         |]
 
-let generateMeshGreedy (chunk: Chunk) =
+let generateMeshGreedy offset (chunk: Chunk) =
     let verts = ResizeArray<float32> 2000
     for dir in  directions do
         for i = 0 to 15 do
             let mask = buildMaskForSlice chunk dir i
             for rect in greedyRectForSlice mask do
-                    verts.AddRange(emitTriangles dir i rect)
+                    verts.AddRange(emitTriangles offset dir i rect)
     verts.ToArray ()
 
 let getLightPositions (coords:Vector3) (chunk: Chunk) =
@@ -202,43 +202,3 @@ let getLightPositions (coords:Vector3) (chunk: Chunk) =
                 let struct(x,y,z) = idx i
                 yield Vector3(float32 x, float32 y, float32 z) + coords
     }
-let private normal x =
-      let success, r = Matrix4x4.Invert x
-      if not success then failwith "could not invert"
-      Matrix4x4.Transpose r 
-
-type Renderer (context: Graphics.Context, chunk, coords, shader, shaderBuffer, material) =
-    let mutable mesh = [||]
-    let mutable generated = false
-    let mutable dirty = true
-    
-    let vao, vbo = context.CreateBuffer mesh
-    let transform = 
-        Matrix4x4.CreateTranslation coords
-    let normal = normal transform
-
-    member _.GenerateMesh () =
-        if generated = false || dirty = true then
-            mesh <- generateMeshGreedy chunk
-            context.UpdateBuffer vao vbo mesh
-            generated <- true
-            dirty <- false
-
-    member _.Generated with get () = generated
-    member _.Dirty 
-        with get () = dirty
-        and set v = dirty <- v
-    member _.PointLights with get () = genPointLights (getLightPositions coords chunk)
-    member _.Render (camera: Client.Systems.Camera) dirLight (pointLights: PointLight array) =
-        printf "Point lights: %i\n" pointLights.Length
-        context.Use shader
-        context.BindVertexArray vao
-        context.SetUniform (shader, "model", transform)
-        context.SetUniform (shader, "view", camera.View())
-        context.SetUniform (shader, "projection", camera.Projection ())
-        context.SetUniform (shader, "normal", normal)
-        context.SetUniform (shader, "viewPos", camera.position)
-        context.SetMaterial (shader, material)
-        context.SetDirLight (shader, dirLight)
-        context.SetPointLights (shader, shaderBuffer, pointLights)
-        context.DrawArrays(PrimitiveType.Triangles, 0, uint (mesh.Length/8))

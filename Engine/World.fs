@@ -17,10 +17,11 @@ let worldBounds = 8,1,8
 let worldSize = 
     let (x,y,z) = worldBounds
     x*y*z
+
+// TODO when world bounds changes this will need to be updated
 let idx i =
     let value = 
         struct(i &&& 0b111, 0, i >>> 3 &&& 0b111)
-    printf "i %i and coord: %A" i value
     value
 let private encodeIndex struct(x,y,z) =
     x ||| (z <<< 3)
