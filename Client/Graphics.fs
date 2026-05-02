@@ -6,6 +6,14 @@ open System.Runtime.InteropServices
 open System.IO
 open StbImageSharp
 
+[<Struct>]
+type Vertex =
+    {
+        position: Vector3
+        normal: Vector3
+        uv: Vector2
+    }
+
 type Context(gl:GL) =
     let mutable shaders = []
     let mutable textures = []
@@ -16,15 +24,40 @@ type Context(gl:GL) =
         shaders <- handle :: shaders
         handle
 
-    member _.CreateBuffer (vertices) =
-        let vao, vbo = Mesh.Create gl vertices
-        buffers <- vao :: vbo :: buffers
-        vao, vbo
+    member _.CreateBuffers () =
+      let vbo = gl.GenBuffer()
+      gl.BindBuffer(GLEnum.ArrayBuffer, vbo)
+      
+      let vao = gl.GenVertexArray()
+      let stride = uint32 (8 * sizeof<float32>)
+      gl.BindBuffer(GLEnum.ArrayBuffer, vbo)
+      gl.BindVertexArray vao
+      gl.VertexAttribPointer(0u, 3, VertexAttribPointerType.Float, false, stride, IntPtr.Zero.ToPointer())
+      gl.EnableVertexAttribArray 0u
 
-    member _.UpdateBuffer vao vbo (vertices: float32 array) =
+      let normalOffset = nativeint (3 * sizeof<float32>)
+      gl.VertexAttribPointer(1u, 3, VertexAttribPointerType.Float, false, stride, normalOffset.ToPointer())
+      gl.EnableVertexAttribArray 1u
+
+      let texOffset = nativeint (6 * sizeof<float32>)
+      gl.VertexAttribPointer(2u, 2, VertexAttribPointerType.Float, false, stride, texOffset.ToPointer())
+      gl.EnableVertexAttribArray 2u
+
+      let ebo = gl.GenBuffer()
+      gl.BindBuffer(BufferTargetARB.ElementArrayBuffer, ebo)
+
+      buffers <- vao :: vbo :: ebo:: buffers
+      vao, vbo, ebo
+
+    member _.BindBuffer (target: BufferTargetARB, buffer: uint) =
+        gl.BindBuffer(target, buffer)
+    member _.UpdateBuffer vao vbo ebo (vertices: Vertex array) (indices: uint array) =
       gl.BindVertexArray vao
       gl.BindBuffer (BufferTargetARB.ArrayBuffer, vbo)
-      gl.BufferData (BufferTargetARB.ArrayBuffer, ReadOnlySpan vertices, BufferUsageARB.StaticDraw)
+      gl.BufferData (BufferTargetARB.ArrayBuffer, ReadOnlySpan vertices, BufferUsageARB.DynamicDraw)
+
+      gl.BindBuffer (BufferTargetARB.ElementArrayBuffer, ebo)
+      gl.BufferData (BufferTargetARB.ElementArrayBuffer, ReadOnlySpan indices, BufferUsageARB.DynamicDraw)
 
     member _.CreateShaderBuffer () =
       let ssbo = gl.GenBuffer()
@@ -52,6 +85,9 @@ type Context(gl:GL) =
         gl.BindVertexArray vao
 
     member _.DrawArrays (mode : PrimitiveType, first, count) = gl.DrawArrays(mode, first, count)
+
+    member _.DrawElements (mode: PrimitiveType, count: uint32, eType: DrawElementsType, indices) =
+      gl.DrawElements(mode, count, eType, indices)
     member _.Use program =
       gl.UseProgram program
     member _.SetUniform (program, k: string, i: int) =

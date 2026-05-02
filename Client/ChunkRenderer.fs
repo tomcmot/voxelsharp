@@ -2,9 +2,8 @@ module ChunkRenderer
 open System.Numerics
 open Engine.Block
 open Engine.Chunk
-open Silk.NET.OpenGL
 
-open Shader
+open Graphics
 let getVertexCount (mesh: float32[]): uint =
     uint mesh.Length / 8u
 
@@ -87,15 +86,10 @@ let emitTriangles (offset:Vector3) (dir: Direction) slice (rect: GreedyRect) =
         let y1 = y+h
         let z1 = z+w
         [|
-        // Triangle 1: (x1,y,z), (x1,y,z1), (x1,y1,z1)
-        // position // normal    //texture coord
-        x1; y; z;   1f; 0f; 0f;   t0; t0;
-        x1; y; z1;  1f; 0f; 0f;   tw; t0;
-        x1; y1; z1; 1f; 0f; 0f;   tw; th;
-        // Triangle 2: (x1,y,z), (x1,y1,z1), (x1,y1,z)
-        x1; y; z;   1f; 0f; 0f;   t0; t0;
-        x1; y1; z1; 1f; 0f; 0f;   tw; th;
-        x1; y1; z;  1f; 0f; 0f;   t0; th;
+        {position=Vector3(x1, y, z);  normal=Vector3(1f, 0f, 0f); uv=Vector2(t0, t0)}
+        {position=Vector3(x1, y, z1); normal=Vector3(1f, 0f, 0f); uv=Vector2(tw, t0)}
+        {position=Vector3(x1, y1, z1); normal=Vector3(1f, 0f, 0f); uv=Vector2(tw, th)}
+        {position=Vector3(x1, y1, z);  normal=Vector3(1f, 0f, 0f); uv=Vector2(t0, th)}
         |]
     | PosY -> 
         let x = float32 a + offset.X
@@ -105,15 +99,10 @@ let emitTriangles (offset:Vector3) (dir: Direction) slice (rect: GreedyRect) =
         let y1 = y+1f
         let z1 = z+w
         [|
-        // Triangle 1: (x,y1,z), (x1,y1,z), (x1,y1,z1)
-        // position // normal    //texture coord
-        x; y1; z;   0f; 1f; 0f;   t0; t0;
-        x1; y1; z;  0f; 1f; 0f;   tw; t0;
-        x1; y1; z1; 0f; 1f; 0f;   tw; th;
-        // Triangle 2: (x,y1,z), (x1,y1,z1), (x,y1,z1)
-        x; y1; z;   0f; 1f; 0f;   t0; t0;
-        x1; y1; z1; 0f; 1f; 0f;   tw; th;
-        x; y1; z1;  0f; 1f; 0f;   t0; th;
+        {position=Vector3(x, y1, z); normal=Vector3(0f, 1f, 0f); uv=Vector2(t0, t0)}
+        {position=Vector3(x1, y1, z); normal=Vector3(0f, 1f, 0f); uv=Vector2(tw, t0)}
+        {position=Vector3(x1, y1, z1); normal=Vector3(0f, 1f, 0f); uv=Vector2(tw, th)}
+        {position=Vector3(x, y1, z1); normal=Vector3(0f, 1f, 0f); uv=Vector2(t0, th)}
         |]
     | PosZ ->
         let x = float32 a + offset.X
@@ -124,15 +113,10 @@ let emitTriangles (offset:Vector3) (dir: Direction) slice (rect: GreedyRect) =
         let z1 = z+1f
     
         [|
-        // Triangle 1: (x,y,z1), (x1,y,z1), (x1,y1,z1)
-        // position // normal    //texture coord
-        x; y; z1;   0f; 0f; 1f;   t0; t0;
-        x1; y; z1;  0f; 0f; 1f;   th; t0;
-        x1; y1; z1; 0f; 0f; 1f;   th; tw;
-        // Triangle 2: (x,y,z1), (x1,y1,z1), (x,y1,z1)
-        x; y; z1;   0f; 0f; 1f;   t0; t0;
-        x1; y1; z1; 0f; 0f; 1f;   th; tw;
-        x; y1; z1;  0f; 0f; 1f;   t0; tw;
+        {position=Vector3(x, y, z1); normal=Vector3(0f, 0f, 1f); uv=Vector2(t0, t0)}
+        {position=Vector3(x1, y, z1); normal=Vector3(0f, 0f, 1f); uv=Vector2(th, t0)}
+        {position=Vector3(x1, y1, z1); normal=Vector3(0f, 0f, 1f); uv=Vector2(th, tw)}
+        {position=Vector3(x, y1, z1); normal=Vector3(0f, 0f, 1f); uv=Vector2(t0, tw)}
         |]
     | NegX -> 
         let x = float32 slice + offset.X
@@ -143,13 +127,10 @@ let emitTriangles (offset:Vector3) (dir: Direction) slice (rect: GreedyRect) =
         [|
         // Triangle 1: (x,y1,z1), (x,y1,z), (x,y,z)
         // position // normal    //texture coord
-        x; y1; z1; -1f; 0f; 0f;   t0; t0;
-        x; y1; z;  -1f; 0f; 0f;   tw; t0;
-        x; y; z;   -1f; 0f; 0f;   tw; th;
-        // Triangle 2: (x,y1,z1), (x,y,z), (x,y,z1)
-        x; y1; z1; -1f; 0f; 0f;   t0; t0;
-        x; y; z;   -1f; 0f; 0f;   tw; th;
-        x; y; z1;  -1f; 0f; 0f;   t0; th;
+        {position=Vector3(x, y1, z1); normal=Vector3(-1f, 0f, 0f); uv=Vector2(t0, t0)}
+        {position=Vector3(x, y1, z); normal=Vector3(-1f, 0f, 0f); uv=Vector2(tw, t0)}
+        {position=Vector3(x, y, z); normal=Vector3(-1f, 0f, 0f); uv=Vector2(tw, th)}
+        {position=Vector3(x, y, z1); normal=Vector3(-1f, 0f, 0f); uv=Vector2(t0, th)}
         |]
     | NegY -> 
         let x = float32 a + offset.X
@@ -160,13 +141,10 @@ let emitTriangles (offset:Vector3) (dir: Direction) slice (rect: GreedyRect) =
         [|
         // Triangle 1: (x1,y,z1), (x,y,z1), (x,y,z)
         // position // normal    //texture coord
-        x1; y; z1; 0f; -1f; 0f;   t0; t0;
-        x; y; z1;  0f; -1f; 0f;   tw; t0;
-        x; y; z;   0f; -1f; 0f;   tw; th;
-        // Triangle 2: (x1,y,z1), (x,y,z), (x1,y,z)
-        x1; y; z1; 0f; -1f; 0f;   t0; t0;
-        x; y; z;   0f; -1f; 0f;   tw; th;
-        x1; y; z;  0f; -1f; 0f;   t0; th;
+        {position=Vector3(x1, y, z1); normal=Vector3(0f, -1f, 0f); uv=Vector2(t0, t0)}
+        {position=Vector3(x, y, z1); normal=Vector3(0f, -1f, 0f); uv=Vector2(tw, t0)}
+        {position=Vector3(x, y, z); normal=Vector3(0f, -1f, 0f); uv=Vector2(tw, th)}
+        {position=Vector3(x1, y, z); normal=Vector3(0f, -1f, 0f); uv=Vector2(t0, th)}
         |]
     | NegZ -> 
         let x = float32 a + offset.X
@@ -177,23 +155,32 @@ let emitTriangles (offset:Vector3) (dir: Direction) slice (rect: GreedyRect) =
         [|
         // Triangle 1: (x1,y1,z), (x,y1,z), (x,y,z)
         // position // normal    //texture coord
-        x1; y1; z;   0f; 0f; -1f;   t0; t0;
-        x; y1; z;  0f; 0f; -1f;   th; t0;
-        x; y; z; 0f; 0f; -1f;   th; tw;
-        // Triangle 2: (x1,y1,z), (x,y,z), (x1,y,z)
-        x1; y1; z;   0f; 0f; -1f;   t0; t0;
-        x; y; z; 0f; 0f; -1f;   th; tw;
-        x1; y; z;  0f; 0f; -1f;   t0; tw;
+        {position=Vector3(x1, y1, z); normal=Vector3(0f, 0f, -1f); uv=Vector2(t0, t0)}
+        {position=Vector3(x, y1, z); normal=Vector3(0f, 0f, -1f); uv=Vector2(th, t0)}
+        {position=Vector3(x, y, z); normal=Vector3(0f, 0f, -1f); uv=Vector2(th, tw)}
+        {position=Vector3(x1, y, z); normal=Vector3(0f, 0f, -1f); uv=Vector2(t0, tw)}
         |]
 
 let generateMeshGreedy offset (chunk: Chunk) =
-    let verts = ResizeArray<float32> 2000
+    let verts = ResizeArray<Vertex> 100
+    let indexs = ResizeArray<uint> 100
     for dir in  directions do
         for i = 0 to 15 do
             let mask = buildMaskForSlice chunk dir i
-            for rect in greedyRectForSlice mask do
-                    verts.AddRange(emitTriangles offset dir i rect)
-    verts.ToArray ()
+            let rects = greedyRectForSlice mask
+            for r = 0 to rects.Length - 1 do
+                let triangles = emitTriangles offset dir i rects[r]
+                let indexes = [|
+                    0u + uint verts.Count
+                    1u + uint verts.Count
+                    2u + uint verts.Count
+                    0u + uint verts.Count
+                    2u + uint verts.Count
+                    3u + uint verts.Count
+                |]
+                verts.AddRange(triangles)
+                indexs.AddRange(indexes)
+    verts.ToArray (), indexs.ToArray()
 
 let getLightPositions (coords:Vector3) (chunk: Chunk) =
     seq {
