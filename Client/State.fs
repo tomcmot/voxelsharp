@@ -6,7 +6,6 @@ open Engine
 open Graphics
 open Shader
 open Silk.NET.OpenGL
-open Microsoft.FSharp.NativeInterop
 
 let makeOffset i =
     let struct(x,y,z) = World.idx i
@@ -15,8 +14,7 @@ type ChunkMesh =
     {
         mutable vertices: Vertex array
         mutable indices: uint array
-        sliceVertsOffsets: int array
-        sliceIdxOffsets: int array
+        mutable lights: PointLight array
         vao: uint
         vbo: uint
         ebo: uint
@@ -27,8 +25,7 @@ let private makeChunkMesh (context: Context) =
     {
         vertices = [||]
         indices = [||]
-        sliceVertsOffsets = Array.create (6*16) 0
-        sliceIdxOffsets = Array.create (6*16) 0
+        lights = [||]
         vao = vao
         vbo = vbo
         ebo = ebo
@@ -57,15 +54,7 @@ type WorldState(context: Context) =
             if not success then failwith "could not invert"
             Matrix4x4.Transpose r 
         normal transform
-    let pointLights = 
-        world.chunks |> Array.mapi (fun i chunk -> 
-            ChunkRenderer.getLightPositions (makeOffset i) chunk.chunk
-        )
-        |> Array.collect Array.ofSeq
-        |> genPointLights
-        |> Array.ofSeq
-        
-
+    let mutable pointLights = [||]
     let MaxMeshesPerFrame = 4
     
     member _.GenerateMeshes () =
@@ -78,6 +67,8 @@ type WorldState(context: Context) =
                 meshes[i].vertices <- vertices
                 meshes[i].indices <- indices
                 context.UpdateBuffer meshes[i].vao meshes[i].vbo meshes[i].ebo vertices indices
+                meshes[i].lights <- ChunkRenderer.getLightPositions (makeOffset i) chunk.chunk |> genPointLights |> Array.ofSeq
+                pointLights <- meshes |> Array.collect (fun m -> m.lights)
                 dirty[i] <- 0UL
                 meshed <- meshed + 1
             i <- i + 1
