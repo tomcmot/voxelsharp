@@ -7,7 +7,7 @@ type Direction =
     | PosX | PosY | PosZ
     | NegX | NegY | NegZ
 
-let private ChunkDim = 16
+let ChunkDim = 16
 let private ChunkSize = ChunkDim * ChunkDim * ChunkDim
 
 let directions = [| PosX; PosY; PosZ; NegX; NegY; NegZ|]

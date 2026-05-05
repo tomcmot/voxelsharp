@@ -73,6 +73,8 @@ type WorldState(context: Context) =
                 meshed <- meshed + 1
             i <- i + 1
     member _.Render (camera : Client.Systems.Camera, dirLight) =
+        let viewProj = camera.View () * camera.Projection ()
+        let planes = AABB.extractFrustumPlanes viewProj
         context.Use shader
         context.SetUniform (shader, "model", transform)
         context.SetUniform (shader, "view", camera.View())
@@ -82,8 +84,11 @@ type WorldState(context: Context) =
         context.SetMaterial (shader, material)
         context.SetDirLight (shader, dirLight)
         context.SetPointLights (shader, shaderBuffer, pointLights)
-        for mesh in meshes do
-            context.BindVertexArray mesh.vao
-            context.BindBuffer (BufferTargetARB.ArrayBuffer, mesh.vbo)
-            context.BindBuffer (BufferTargetARB.ElementArrayBuffer, mesh.ebo)
-            context.DrawElements(PrimitiveType.Triangles, uint mesh.indices.Length, DrawElementsType.UnsignedInt, 0n.ToPointer())
+        for i = 0 to meshes.Length - 1 do
+            let mesh = meshes[i]
+            let aabb = AABB.chunkBounds (makeOffset i)
+            if AABB.intersectsFrustum aabb planes then
+                context.BindVertexArray mesh.vao
+                context.BindBuffer (BufferTargetARB.ArrayBuffer, mesh.vbo)
+                context.BindBuffer (BufferTargetARB.ElementArrayBuffer, mesh.ebo)
+                context.DrawElements(PrimitiveType.Triangles, uint mesh.indices.Length, DrawElementsType.UnsignedInt, 0n.ToPointer())

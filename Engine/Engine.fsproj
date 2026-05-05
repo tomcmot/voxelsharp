@@ -4,7 +4,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup><Compile Include="Block.fs" />
-    <Compile Include="Chunk.fs" /><Compile Include="World.fs" />
+    <Compile Include="Chunk.fs" /><Compile Include="World.fs" /><Compile Include="AABB.fs" />
     <Compile Include="Entity.fs" />
     <Compile Include="Library.fs" />
   </ItemGroup>
